@@ -34,17 +34,18 @@ def ejecutar() -> dict:
     ind_cubo = (df.groupBy("fecha_firma", "departamento", F.coalesce("modalidad", F.lit("Sin dato")).alias("modalidad"))
                 .agg(F.count("*").alias("contratos"), F.sum(v).alias("valor_total"))
                 .withColumn("fecha_firma", F.col("fecha_firma").cast("string")).orderBy("fecha_firma"))
-    ind_ent300 = (df.groupBy(F.coalesce("nombre_entidad", F.lit("Sin dato")).alias("entidad"), "departamento", "orden").agg(
+    ind_ent_todas = (df.groupBy(F.coalesce("nombre_entidad", F.lit("Sin dato")).alias("entidad"), "departamento", "orden").agg(
         F.count("*").alias("contratos"), F.sum(v).alias("valor_total"), F.sum(F.when(d, v).otherwise(0.0)).alias("valor_directa"))
         .withColumn("pct_valor_directa", F.round(100 * F.col("valor_directa") / F.col("valor_total"), 2))
-        .orderBy(F.desc("valor_total")).limit(300))
+        .orderBy(F.desc("valor_total")))  # TODAS las entidades: el tablero las filtra/busca
     n, corte = df.count(), df.agg(F.max("fecha_de_firma")).first()[0]
     tablas = {"ind_directa_por_departamento": ind_dep, "ind_modalidad": ind_mod,
               "ind_top_entidades": ind_ent, "ind_serie_diaria": ind_dia,
-              "ind_cubo_dia_dep_modalidad": ind_cubo, "ind_entidades_top300": ind_ent300}
+              "ind_cubo_dia_dep_modalidad": ind_cubo, "ind_entidades": ind_ent_todas}
 
     config.SERVICIO_DB.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(config.SERVICIO_DB)
+    con.execute("DROP TABLE IF EXISTS ind_entidades_top300")  # versión anterior (solo top 300)
     for nombre, sdf in tablas.items():  # "replace" => idempotente: la tabla refleja siempre la curada actual
         sdf.toPandas().to_sql(nombre, con, if_exists="replace", index=False)
         log.info("%s: %s filas", nombre, sdf.count())

@@ -36,7 +36,7 @@ def main() -> None:
     con = sqlite3.connect(DB)
     q = lambda t: pd.read_sql(f"SELECT * FROM {t}", con)
     meta = q("meta_corte").iloc[0].to_dict()
-    cubo, ent = q("ind_cubo_dia_dep_modalidad"), q("ind_entidades_top300")
+    cubo, ent = q("ind_cubo_dia_dep_modalidad"), q("ind_entidades")
     try:
         rap = q("rapida_ventana_diaria")
     except Exception:

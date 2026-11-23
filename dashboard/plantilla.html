@@ -53,7 +53,7 @@ footer{padding:16px 28px 28px;color:var(--mut);font-size:12px;max-width:1500px;m
     <div class="card c6"><h3>Valor contratado por modalidad</h3><p class="sub">Tamaño = valor; color = modalidad · clic para filtrar</p><div id="trees" style="height:380px"></div></div>
     <div class="card c6"><h3>Evolución diaria del valor y de la contratación directa</h3><p class="sub">Barras: valor por día de firma · línea: % del valor por contratación directa</p><div id="serie" style="height:380px"></div></div>
     <div class="card c12"><h3>¿Dónde pesa más la contratación directa?</h3><p class="sub">% del valor por departamento (12 con más valor) y modalidad en el periodo seleccionado</p><div id="heat" style="height:470px"></div></div>
-    <div class="card c12"><h3>20 entidades con mayor valor contratado (top 300 en la tabla)</h3><p class="sub">Tabla ordenable y con búsqueda · cifras del periodo completo de la muestra</p><div id="tabla"></div></div>
+    <div class="card c12"><h3>Entidades contratantes</h3><p class="sub">Todas las entidades de la muestra, ordenadas por valor · escribe en el filtro de "Entidad" para buscar cualquiera (p. ej. "pascual bravo") · cifras del periodo completo</p><div id="tabla"></div></div>
   </section>
 </main>
 <footer id="pie"></footer>
@@ -150,12 +150,13 @@ function bindClicks(){ if(bound) return; bound=true;
   $("deps").on("plotly_click",e=>{S.dep=e.points[0].y; opts($("f-dep"),["Todos",...deps],S.dep); render();});
   $("trees").on("plotly_click",e=>{S.mod=e.points[0].label; opts($("f-mod"),["Todas",...mods],S.mod); render();});
 }
-new Tabulator("#tabla",{data:D.entidades,layout:"fitColumns",height:420,pagination:true,paginationSize:10,
+const TABLA = new Tabulator("#tabla",{data:D.entidades,layout:"fitColumns",height:420,pagination:true,paginationSize:10,
   initialSort:[{column:"valor_total",dir:"desc"}],
   columns:[{title:"Entidad",field:"entidad",headerFilter:"input",widthGrow:3},{title:"Departamento",field:"departamento",headerFilter:"input"},
     {title:"Orden",field:"orden",width:110},{title:"Contratos",field:"contratos",sorter:"number",hozAlign:"right",formatter:c=>nf.format(c.getValue())},
     {title:"Valor total",field:"valor_total",sorter:"number",hozAlign:"right",formatter:c=>cop(c.getValue())},
     {title:"% valor directa",field:"pct_valor_directa",sorter:"number",width:170,formatter:c=>{const v=Number(c.getValue());if(!isFinite(v))return "–";return `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:#eef1f7;border-radius:4px;height:10px"><div style="width:${Math.min(100,v)}%;background:#e07a1f;height:10px;border-radius:4px"></div></div><span>${v.toFixed(0)}%</span></div>`}}]});
+TABLA.on("tableBuilt",()=>{const e=new URLSearchParams(decodeURIComponent(location.hash.slice(1))).get("ent"); if(e) TABLA.setHeaderFilterValue("entidad",e);});
 const M=D.meta;
 $("pie").innerHTML=`<b>Fuente:</b> <a href="${M.url}">${M.fuente}</a> (API Socrata, datos abiertos) · <b>Fecha de corte</b> (última firma incluida): ${M.fecha_corte} · ${nf.format(+M.filas_curada)} contratos curados · generado ${M.generado}.
  Pipeline: API → raw JSONL → Kafka → HDFS → PySpark (Parquet) → SQLite → este tablero.${D.repo?` · <a href="${D.repo}">Código</a>`:""}<br>Mapa: límites departamentales DANE (MGN 2018) vía caticoa3/colombia_mapa. Cifras en pesos colombianos; la modalidad "Contratación directa" incluye su variante "con ofertas".`;
