@@ -18,7 +18,7 @@ table.t{border-collapse:collapse;width:100%}.t th{background:#0b5fa5;color:#fff;
 <tr><td><b>Pregunta</b></td><td>¿Cuánta contratación se adjudica de forma directa y dónde se concentra el dinero (departamento, modalidad, entidad)?</td></tr>
 <tr><td><b>Usuarios</b></td><td>veedurías ciudadanas, periodismo de datos y entes de control</td></tr>
 <tr><td><b>Muestra</b></td><td>32.707 contratos firmados · 2026-11-07 de corte</td></tr></table>
-<p class="a">[Tu nombre y apellidos]</p></div></section><section class="slide"><header><span>Arquitectura por zonas · Lambda</span><small>Fase 1</small></header><div class="body">
+<p class="a">Maria Fernanda Holguin Hernandez</p></div></section><section class="slide"><header><span>Arquitectura por zonas · Lambda</span><small>Fase 1</small></header><div class="body">
 <div class="flow"><div class="z raw"><h4>RAW</h4>Python <code>requests</code> + sobre JSON<br>JSONL <code>fecha_ingesta=…</code> + manifiesto</div><i>→</i>
 <div class="z kf"><h4>Kafka</h4>tópico · 3 particiones<br>key = id_registro · grupo</div><i>→</i>
 <div class="z raw"><h4>HDFS</h4>lotes por fecha<br>MapReduce ⇄ Spark</div><i>→</i>
@@ -31,7 +31,7 @@ table.t{border-collapse:collapse;width:100%}.t th{background:#0b5fa5;color:#fff;
 <tr><td>Mensajería</td><td>Apache Kafka (KRaft, 3 particiones)</td><td>tópico <code>secop.contratos.raw</code></td></tr>
 <tr><td>Data lake / cálculo</td><td>HDFS · MapReduce (Python) · PySpark</td><td>raw en lotes · Parquet curado</td></tr>
 <tr><td>Servicio / tablero</td><td>SQLite · Plotly HTML (GitHub Pages)</td><td>indicadores listos + tablero</td></tr></table></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>2/8</b></footer></section><section class="slide"><header><span>Ingesta a raw y mensajería con Kafka</span><small>Fases 2 y 3</small></header><div class="body">
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>2/8</b></footer></section><section class="slide"><header><span>Ingesta a raw y mensajería con Kafka</span><small>Fases 2 y 3</small></header><div class="body">
 <div class="cols"><div><h4>Ingesta (Fase 2)</h4><ul><li>API Socrata con <b>paginación</b> ($limit/$offset, orden estable) y <b>5 reintentos</b> con espera exponencial</li>
 <li><b>Sobre JSON</b>: <code>fuente, dataset, id_registro, fecha_ingesta, payload</code> (registro original intacto)</li>
 <li>JSONL en <code>fecha_ingesta=AAAA-MM-DD/</code> + <b>manifiesto</b> por corrida</li>
@@ -42,7 +42,7 @@ table.t{border-collapse:collapse;width:100%}.t th{background:#0b5fa5;color:#fff;
 <div><h4>Kafka (Fase 3)</h4><ul><li>Tópico <code>secop.contratos.raw</code> · <b>3 particiones</b></li><li>Productor <b>idempotente</b>, <b>key = id_registro</b> (mismo contrato → misma partición)</li>
 <li>Consumidor con <b>grupo</b>, commit <i>después</i> de escribir en HDFS</li></ul>
 <div class="box"><b>¿Y si el productor corre dos veces?</b><br>1) Un <i>ledger</i> de archivos publicados evita republicar.<br>2) Si se fuerza, Kafka duplica (log de eventos) pero la <b>curada deduplica por id_registro</b> y el streaming usa <code>dropDuplicates</code>.<br>Demostrado: Kafka y HDFS pasan a ×2 y curada/servicio/streaming <b>no cambian</b> (<code>evidencias/kafka_duplicados.txt</code>).</div></div></div></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>3/8</b></footer></section><section class="slide"><header><span>Data lake en HDFS y MapReduce vs Spark</span><small>Fase 4</small></header><div class="body">
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>3/8</b></footer></section><section class="slide"><header><span>Data lake en HDFS y MapReduce vs Spark</span><small>Fase 4</small></header><div class="body">
 <div class="cols"><div><h4>HDFS (Fase 4)</h4><pre>/datalake/raw/datos.gov.co/jbjy-vk9h/
   fecha_ingesta=2026-11-23/
     lote_p0_o0000000000-0000004999.jsonl
@@ -55,7 +55,7 @@ reducer → departamento \t n \t Σ valor</pre>
 <div class="box"><b>Job real de Hadoop Streaming</b> (<code>hadoop-streaming-3.2.1.jar</code>, ejecutor local de MapReduce; sin YARN): 32.707 registros de entrada → 34 de salida · vs Spark: <b>COINCIDEN</b></div></div></div>
 <h4 style="margin-top:14px">Resultado: contratos y valor (miles de millones COP) por departamento</h4>
 <table class="t small"><tr><th>Departamento</th><th>Spark contratos</th><th>MapReduce contratos</th><th>Spark valor</th><th>MapReduce valor</th><th></th></tr><tr><td>Distrito Capital de Bogotá</td><td>5.847</td><td>5.847</td><td>4,809</td><td>4,809</td><td class=ok>✔</td></tr><tr><td>Valle del Cauca</td><td>3.322</td><td>3.322</td><td>236</td><td>236</td><td class=ok>✔</td></tr><tr><td>Antioquia</td><td>3.031</td><td>3.031</td><td>1,569</td><td>1,569</td><td class=ok>✔</td></tr></table></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>4/8</b></footer></section><section class="slide"><header><span>Zona curada con PySpark → Parquet</span><small>Fase 5</small></header><div class="body">
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>4/8</b></footer></section><section class="slide"><header><span>Zona curada con PySpark → Parquet</span><small>Fase 5</small></header><div class="body">
 <table class="t"><tr><th>Problema</th><th>Decisión y por qué</th><th>Antes → después</th></tr>
 <tr><td>Duplicados por <code>id_registro</code></td><td>Una fila por id (mayor fecha_ingesta, luego ultima_actualizacion): refleja el estado actual y no cuenta el dinero dos veces</td><td>32.707 → 32.707<br><small>republicando Kafka a propósito: 65.414 → 32.707</small></td></tr>
 <tr><td>Fechas y valores como texto</td><td>→ timestamp / double; lo inválido a NULL (no se inventa)</td><td>0 fechas y 0 valores nulos</td></tr>
@@ -64,13 +64,13 @@ reducer → departamento \t n \t Σ valor</pre>
 <tr><td>Sin fecha / valor nulo, negativo o &gt; 1e13</td><td>Se descarta y se cuenta por razón (el raw conserva todo)</td><td>32.707 → 32.707</td></tr></table>
 <div class="cols"><div class="box"><b>Partición <code>anio_mes</code></b> (2 particiones): las consultas son temporales; el mes da pocas particiones grandes (el día daría archivos diminutos); <code>departamento</code> está sesgado a Bogotá/Valle/Antioquia.</div>
 <div class="box big"><b>JSONL 145 MB → Parquet 2.2 MB</b><br>−98.5 % (columnar + solo las columnas usadas)</div></div></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>5/8</b></footer></section><section class="slide"><header><span>Calidad, incremental e idempotencia (demo en vivo)</span><small>Fase 6</small></header><div class="body">
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>5/8</b></footer></section><section class="slide"><header><span>Calidad, incremental e idempotencia (demo en vivo)</span><small>Fase 6</small></header><div class="body">
 <div class="cols"><div><h4>Validaciones automáticas</h4><table class="t small"><tr><th>Validación</th><th>Tipo</th><th></th></tr><tr><td>conteo mayor que cero</td><td>crítica</td><td class=ok>✔</td></tr><tr><td>sin nulos en columnas clave</td><td>crítica</td><td class=ok>✔</td></tr><tr><td>sin id registro repetidos</td><td>crítica</td><td class=ok>✔</td></tr><tr><td>valor dentro de rango 0 a 1e13</td><td>crítica</td><td class=ok>✔</td></tr><tr><td>descartados menos del 5 pct</td><td>aviso</td><td class=ok>✔</td></tr></table>
 <p class="small">Reporte con descartados (0). <b>Si falla una crítica → exit 1 y el pipeline se detiene.</b></p>
 <div class="box"><b>Marca de agua</b> = última <code>fecha_de_firma</code> cargada. Ampliar la ventana trajo solo <b>8.243</b> nuevos; repetirla trajo <b>0</b>.</div></div>
 <div><h4>Correr el pipeline dos veces</h4><table class="t small"><tr><th>Conteo por zona</th><th>Corrida 1</th><th>Corrida 2</th><th></th></tr><tr><td>raw_local_lineas</td><td>32.707</td><td>32.707</td><td class=ok>✔</td></tr><tr><td>kafka_mensajes</td><td>32.707</td><td>32.707</td><td class=ok>✔</td></tr><tr><td>hdfs_lineas</td><td>32.707</td><td>32.707</td><td class=ok>✔</td></tr><tr><td>curada_filas(meta_corte)</td><td>32.707</td><td>32.707</td><td class=ok>✔</td></tr><tr><td>batch_dias</td><td>14</td><td>14</td><td class=ok>✔</td></tr><tr><td>batch_contratos_en_serie</td><td>32.707</td><td>32.707</td><td class=ok>✔</td></tr><tr><td>rapida_ventanas</td><td>14</td><td>14</td><td class=ok>✔</td></tr><tr><td>rapida_contratos</td><td>32.707</td><td>32.707</td><td class=ok>✔</td></tr></table>
 <div class="box big">Resultado: <b>IDEMPOTENTE</b> — la curada se reconstruye desde el raw (overwrite) y el servicio usa replace.</div></div></div></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>6/8</b></footer></section><section class="slide"><header><span>Streaming: capa rápida (Lambda)</span><small>Fase 7</small></header><div class="body">
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>6/8</b></footer></section><section class="slide"><header><span>Streaming: capa rápida (Lambda)</span><small>Fase 7</small></header><div class="body">
 <div class="cols"><div><ul><li>Spark <b>Structured Streaming</b> lee el tópico de Kafka</li><li>Agregación por <b>ventana de 1 día</b> (event time = <code>fecha_de_firma</code>)</li>
 <li><b>Watermark 7 días</b> + <code>dropDuplicates(id_registro, event_time)</code></li><li><b>Checkpoint</b>: guarda offsets y estado de ventanas</li><li>Salida con <i>upsert</i> en SQLite (clave = ventana)</li></ul>
 <div class="box"><b>Unión con el batch (Lambda):</b> el tablero usa la vista batch (limpieza completa) y completa con la capa rápida los días posteriores al último día del batch; cuando el batch se actualiza, prevalece.</div></div>
@@ -79,9 +79,9 @@ Tras arranque #2: ventanas=14 contratos=32707
 RESULTADO: el reinicio no reprocesó ni duplicó</pre>
 <div class="box big">Al reiniciar: <b>0 filas reprocesadas</b>,<br>mismas ventanas y mismos contratos<br>(capa rápida = capa batch: 32.707)</div>
 <table class="t small"><tr><th>Día (ventana)</th><th>Batch</th><th>Rápida</th><th></th></tr><tr><td>2026-10-25</td><td>160</td><td>160</td><td class=ok>✔</td></tr><tr><td>2026-10-26</td><td>2.922</td><td>2.922</td><td class=ok>✔</td></tr><tr><td>2026-10-27</td><td>2.860</td><td>2.860</td><td class=ok>✔</td></tr><tr><td>2026-10-28</td><td>3.164</td><td>3.164</td><td class=ok>✔</td></tr><tr><td>2026-10-29</td><td>3.416</td><td>3.416</td><td class=ok>✔</td></tr><tr><td>2026-10-30</td><td>4.465</td><td>4.465</td><td class=ok>✔</td></tr></table></div></div></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>7/8</b></footer></section><section class="slide"><header><span>Tablero y hallazgos</span><small>Fase 8</small></header><div class="body">
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>7/8</b></footer></section><section class="slide"><header><span>Tablero y hallazgos</span><small>Fase 8</small></header><div class="body">
 <div class="cols dash"><div class="img"><img src="../evidencias/tablero_completo.png"></div>
 <div><h4>Servicio y tablero (Fase 8)</h4><ul class="small"><li>SQLite: <code>ind_directa_por_departamento</code>, <code>ind_modalidad</code>, <code>ind_top_entidades</code>, <code>ind_serie_diaria</code></li><li>Plotly HTML: mapa, barras, treemap, serie, mapa de calor y tabla · filtros</li><li>Título = pregunta; fuente y fecha de corte en el pie</li></ul>
 <div class="box"><b>Respuesta a la pregunta</b><br>• <b>73,8 %</b> de los contratos y <b>30,0 %</b> del valor ($8,51 billones) son contratación directa.<br>• 3 departamentos concentran <b>81,0 %</b> del valor (Bogotá, Antioquia, Atlántico).<br>• Mayor entidad: Invias ($3,82 billones).</div>
 <p class="small"><b>Repositorio:</b> https://github.com/Mafe97/pipeline-secop-contratacion<br><b>Tablero:</b> https://mafe97.github.io/pipeline-secop-contratacion/</p></div></div></div>
-    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>8/8</b></footer></section></html>
+    <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · Maria Fernanda Holguin Hernandez<b>8/8</b></footer></section></html>
