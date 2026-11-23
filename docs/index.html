@@ -74,6 +74,11 @@ opts($("f-desde"),fechas,S.desde); opts($("f-hasta"),fechas,S.hasta); opts($("f-
 $("f-reset").onclick=()=>{Object.assign(S,{desde:fechas[0],hasta:fechas[fechas.length-1],dep:"Todos",mod:"Todas"});
   opts($("f-desde"),fechas,S.desde);opts($("f-hasta"),fechas,S.hasta);opts($("f-dep"),["Todos",...deps],S.dep);opts($("f-mod"),["Todas",...mods],S.mod);render();};
 
+// filtros por URL, p. ej. index.html#dep=Antioquia&mod=Contratación directa (enlaces compartibles)
+new URLSearchParams(decodeURIComponent(location.hash.slice(1))).forEach((v,k)=>{
+  if(k==="dep"&&deps.includes(v)) S.dep=v; if(k==="mod"&&mods.includes(v)) S.mod=v;
+  if(k==="desde"&&fechas.includes(v)) S.desde=v; if(k==="hasta"&&fechas.includes(v)) S.hasta=v;});
+opts($("f-desde"),fechas,S.desde);opts($("f-hasta"),fechas,S.hasta);opts($("f-dep"),["Todos",...deps],S.dep);opts($("f-mod"),["Todas",...mods],S.mod);
 const enFecha = r => r[0]>=S.desde && r[0]<=S.hasta;
 const sel = (conDep,conMod)=>D.cubo.filter(r=>enFecha(r)&&(!conDep||S.dep==="Todos"||r[1]===S.dep)&&(!conMod||S.mod==="Todas"||r[2]===S.mod));
 function agg(rows,key){const m=new Map();for(const r of rows){const k=key(r);const o=m.get(k)||{n:0,v:0,vd:0};o.n+=r[3];o.v+=r[4];if(r[2]===DIRECTA)o.vd+=r[4];m.set(k,o);}return m;}

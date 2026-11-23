@@ -94,7 +94,7 @@ airflow/dags/   DAG opcional      tests/   pytest      tools/   construcción de
 muestras/    raw (200 líneas), manifiestos, reporte de calidad y tablas de servicio (CSV)
 evidencias/  salidas de Kafka, HDFS, MapReduce vs Spark, idempotencia, streaming, incremental, calidad y capturas del tablero
 ```
-Capturas: `evidencias/tablero_completo.png` y `evidencias/hdfs_namenode_explorer.png` (esta última se tomó tras la republicación forzada, por eso lista lotes adicionales).
+Capturas: `evidencias/tablero_completo.png` (local), `evidencias/tablero_publicado_github_pages.png` (la página desplegada), `evidencias/tablero_filtrado_antioquia.png` (filtro por departamento; los filtros también se pueden compartir por URL, p. ej. `…/#dep=Antioquia&mod=Contratación directa`) y `evidencias/hdfs_namenode_explorer.png` (esta última se tomó tras la republicación forzada, por eso lista lotes adicionales).
 
 ## 5. Limitaciones
 - Hive y Airflow son opcionales: se incluye el DAG de Airflow, pero no se desplegó ni probó en un Airflow real; no se hizo Hive.
