@@ -164,12 +164,12 @@ function renderMpio(){
   const bins=[["Menos de 25 %",0,25,"#2a9d8f"],["25 a 50 %",25,50,"#8ab17d"],["50 a 75 %",50,75,"#e9a23b"],["75 % o más",75,101,"#c0392b"]];
   const base=D.municipios.filter(m=>S.dep==="Todos"||m.departamento===S.dep), maxV=d3.max(D.municipios,m=>m.valor_total);
   const traces=bins.map(([name,lo,hi,col])=>{const r=base.filter(m=>m.pct_valor_directa>=lo&&m.pct_valor_directa<hi);
-    return {type:"scattermap",mode:"markers",name,lat:r.map(m=>m.lat),lon:r.map(m=>m.lon),
+    return {type:"scattermapbox",mode:"markers",name,lat:r.map(m=>m.lat),lon:r.map(m=>m.lon),
       marker:{size:r.map(m=>7+36*Math.sqrt(m.valor_total/maxV)),color:col,opacity:.8},
       customdata:r.map(m=>[m.mpio,m.departamento,m.contratos,cop(m.valor_total),m.pct_valor_directa]),
       hovertemplate:"<b>%{customdata[0]}</b> · %{customdata[1]}<br>Contratos: %{customdata[2]:,}<br>Valor: %{customdata[3]}<br>% valor directa: %{customdata[4]:.1f} %<extra></extra>"};});
   const c=(S.dep!=="Todos"&&base.length)?{lat:d3.mean(base,m=>m.lat),lon:d3.mean(base,m=>m.lon)}:{lat:5.4,lon:-74.6};
-  Plotly.react("mpio",traces,{...L,margin:{l:0,r:0,t:0,b:0},uirevision:S.dep,map:{style:"open-street-map",center:c,zoom:(S.dep!=="Todos"&&base.length)?7:5.05},
+  Plotly.react("mpio",traces,{...L,margin:{l:0,r:0,t:0,b:0},uirevision:S.dep,mapbox:{style:"open-street-map",center:c,zoom:(S.dep!=="Todos"&&base.length)?7:5.05},
     legend:{orientation:"h",x:.01,y:.02,bgcolor:"rgba(255,255,255,.85)",font:{size:12}}},cfg);
 }
 let bound=false;
