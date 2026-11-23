@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contratación pública SECOP II · ¿cuánto se adjudica de forma directa?</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" rel="stylesheet">
+<script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#14213d;--mut:#5b6785;--line:#e3e8f2;--brand:#0b5fa5;--acc:#e07a1f;--ok:#1b9e77}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Inter","Segoe UI",system-ui,sans-serif}
+header{background:linear-gradient(120deg,#0a2540,#0b5fa5);color:#fff;padding:22px 28px 18px}
+header h1{margin:0 0 4px;font-size:24px;line-height:1.2}header p{margin:0;opacity:.85}
+.respuesta{margin-top:12px;background:rgba(255,255,255,.12);border-left:4px solid var(--acc);padding:10px 14px;border-radius:6px;font-size:15px}
+.filtros{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);padding:10px 28px;display:flex;gap:16px;flex-wrap:wrap;align-items:end}
+.filtros label{display:flex;flex-direction:column;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;gap:3px}
+.filtros select,.filtros button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:150px}
+.filtros button{cursor:pointer;background:var(--brand);color:#fff;border-color:var(--brand);min-width:0}
+.chip{margin-left:auto;font-size:12px;color:var(--mut)}
+main{padding:18px 28px 36px;max-width:1500px;margin:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}.kpi .v{font-size:24px;font-weight:700;margin-top:2px}.kpi .s{font-size:12px;color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 12px 6px;min-width:0}
+.card h3{margin:2px 4px 0;font-size:14px}.card p.sub{margin:0 4px 4px;font-size:12px;color:var(--mut)}
+.c6{grid-column:span 6}.c5{grid-column:span 5}.c7{grid-column:span 7}.c12{grid-column:span 12}
+@media(max-width:1000px){.c6,.c5,.c7{grid-column:span 12}}
+footer{padding:16px 28px 28px;color:var(--mut);font-size:12px;max-width:1500px;margin:auto}footer a{color:var(--brand)}
+.tabulator{font-size:12.5px;border:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>¿Cuánta contratación pública se adjudica de forma directa y dónde se concentra el dinero?</h1>
+  <p>SECOP II · Contratos electrónicos firmados · para veedurías ciudadanas, periodismo de datos y entes de control</p>
+  <div class="respuesta" id="respuesta"></div>
+</header>
+<div class="filtros">
+  <label>Desde<select id="f-desde"></select></label>
+  <label>Hasta<select id="f-hasta"></select></label>
+  <label>Departamento<select id="f-dep"></select></label>
+  <label>Modalidad<select id="f-mod"></select></label>
+  <button id="f-reset">Quitar filtros</button>
+  <span class="chip" id="chip"></span>
+</div>
+<main>
+  <section class="kpis" id="kpis"></section>
+  <section class="grid">
+    <div class="card c5"><h3>% del valor adjudicado por contratación directa</h3><p class="sub">Mapa por departamento · clic en un departamento para filtrar</p><div id="mapa" style="height:480px"></div></div>
+    <div class="card c7"><h3>Valor contratado por departamento</h3><p class="sub">Directa vs. otras modalidades (15 con más valor) · clic para filtrar</p><div id="deps" style="height:480px"></div></div>
+    <div class="card c6"><h3>Valor contratado por modalidad</h3><p class="sub">Tamaño = valor; color = modalidad · clic para filtrar</p><div id="trees" style="height:380px"></div></div>
+    <div class="card c6"><h3>Evolución diaria del valor y de la contratación directa</h3><p class="sub">Barras: valor por día de firma · línea: % del valor por contratación directa</p><div id="serie" style="height:380px"></div></div>
+    <div class="card c12"><h3>¿Dónde pesa más la contratación directa?</h3><p class="sub">% del valor por departamento (12 con más valor) y modalidad en el periodo seleccionado</p><div id="heat" style="height:470px"></div></div>
+    <div class="card c12"><h3>20 entidades con mayor valor contratado (top 300 en la tabla)</h3><p class="sub">Tabla ordenable y con búsqueda · cifras del periodo completo de la muestra</p><div id="tabla"></div></div>
+  </section>
+</main>
+<footer id="pie"></footer>
+<script>
+const D = /*__DATOS__*/null, GEO = /*__GEO__*/null;
+const DIRECTA = "Contratación directa";
+const nf = new Intl.NumberFormat("es-CO"), pf = v => (v==null||isNaN(v)?"–":v.toFixed(1).replace(".",",")+" %");
+function cop(v){const a=Math.abs(v); if(a>=1e12) return "$"+(v/1e12).toFixed(2).replace(".",",")+" billones";
+  if(a>=1e9) return "$"+nf.format(Math.round(v/1e9))+" mil millones"; if(a>=1e6) return "$"+nf.format(Math.round(v/1e6))+" millones"; return "$"+nf.format(Math.round(v));}
+const COLORS = ["#0b5fa5","#e07a1f","#1b9e77","#7b5ea7","#d1495b","#3a7d44","#8d6e63","#5f6b7a"];
+const fechas = [...new Set(D.cubo.map(r=>r[0]))].sort(), deps = [...new Set(D.cubo.map(r=>r[1]))].sort(), mods = [...new Set(D.cubo.map(r=>r[2]))].sort();
+const modColor = Object.fromEntries(mods.map((m,i)=>[m,COLORS[i%COLORS.length]]));
+const S = {desde:fechas[0], hasta:fechas[fechas.length-1], dep:"Todos", mod:"Todas"};
+const $ = id => document.getElementById(id);
+const opts = (el,arr,sel)=>{el.innerHTML=arr.map(x=>`<option ${x===sel?"selected":""}>${x}</option>`).join("")};
+opts($("f-desde"),fechas,S.desde); opts($("f-hasta"),fechas,S.hasta); opts($("f-dep"),["Todos",...deps],S.dep); opts($("f-mod"),["Todas",...mods],S.mod);
+["desde","hasta","dep","mod"].forEach(k=>$("f-"+k).onchange=e=>{S[k]=e.target.value; render();});
+$("f-reset").onclick=()=>{Object.assign(S,{desde:fechas[0],hasta:fechas[fechas.length-1],dep:"Todos",mod:"Todas"});
+  opts($("f-desde"),fechas,S.desde);opts($("f-hasta"),fechas,S.hasta);opts($("f-dep"),["Todos",...deps],S.dep);opts($("f-mod"),["Todas",...mods],S.mod);render();};
+
+const enFecha = r => r[0]>=S.desde && r[0]<=S.hasta;
+const sel = (conDep,conMod)=>D.cubo.filter(r=>enFecha(r)&&(!conDep||S.dep==="Todos"||r[1]===S.dep)&&(!conMod||S.mod==="Todas"||r[2]===S.mod));
+function agg(rows,key){const m=new Map();for(const r of rows){const k=key(r);const o=m.get(k)||{n:0,v:0,vd:0};o.n+=r[3];o.v+=r[4];if(r[2]===DIRECTA)o.vd+=r[4];m.set(k,o);}return m;}
+const pct=(a,b)=>b>0?100*a/b:null;
+const L={margin:{l:8,r:8,t:8,b:8},paper_bgcolor:"rgba(0,0,0,0)",plot_bgcolor:"rgba(0,0,0,0)",font:{family:"Inter,Segoe UI,system-ui",size:12,color:"#14213d"}};
+const cfg={displayModeBar:false,responsive:true};
+
+function render(){
+  const rows=sel(true,true), tot=agg(rows,()=>1).get(1)||{n:0,v:0,vd:0};
+  let nDir=0; for(const r of rows) if(r[2]===DIRECTA) nDir+=r[3];
+  const filtros=[S.dep!=="Todos"&&S.dep, S.mod!=="Todas"&&S.mod].filter(Boolean).join(" · ")||"todo el país, todas las modalidades";
+  $("chip").textContent=`${S.desde} → ${S.hasta} · ${filtros}`;
+  $("respuesta").innerHTML=tot.n? `<b>Respuesta:</b> en ${filtros}, el <b>${pf(pct(nDir,tot.n))}</b> de los contratos y el <b>${pf(pct(tot.vd,tot.v))}</b> del valor (${cop(tot.vd)} de ${cop(tot.v)}) se adjudicó por contratación directa.`:"Sin datos para el filtro actual.";
+  const ndeps=new Set(rows.map(r=>r[1])).size;
+  $("kpis").innerHTML=[["Contratos firmados",nf.format(tot.n),`${ndeps} departamentos`],["Valor contratado",cop(tot.v),"pesos colombianos"],
+    ["% contratos por contratación directa",pf(pct(nDir,tot.n)),`${nf.format(nDir)} contratos`],["% del valor por contratación directa",pf(pct(tot.vd,tot.v)),cop(tot.vd)],
+    ["Valor medio por contrato",tot.n?cop(tot.v/tot.n):"–","promedio simple"]].map(([l,v,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
+
+  // Mapa + barras por departamento (ignoran el filtro de departamento para poder compararlos)
+  const porDep=agg(sel(false,true),r=>r[1]), nombres=[...porDep.keys()];
+  const locs=nombres.map(d=>D.geoClave[d]), z=nombres.map(d=>pct(porDep.get(d).vd,porDep.get(d).v));
+  Plotly.react("mapa",[{type:"choropleth",geojson:GEO,featureidkey:"properties.clave",locations:locs,z,customdata:nombres,
+    colorscale:[[0,"#e8f1fa"],[.5,"#5aa0d6"],[1,"#0a2f5c"]],zmin:0,zmax:100,marker:{line:{color:"#fff",width:.6}},
+    colorbar:{orientation:"h",x:.5,xanchor:"center",y:-.02,len:.8,thickness:10,title:{text:"% del valor por contratación directa",side:"top"},ticksuffix:" %"},
+    hovertemplate:"<b>%{customdata}</b><br>% valor directa: %{z:.1f} %<extra></extra>"}],
+    {...L,margin:{l:0,r:0,t:0,b:40},geo:{visible:false,bgcolor:"rgba(0,0,0,0)",projection:{type:"mercator"},lonaxis:{range:[-79.6,-66.5]},lataxis:{range:[-4.4,13.4]}}},cfg);
+  const top=nombres.filter(d=>d!=="Sin dato").sort((a,b)=>porDep.get(b).v-porDep.get(a).v).slice(0,15).reverse();
+  Plotly.react("deps",[{type:"bar",orientation:"h",name:"Contratación directa",y:top,x:top.map(d=>porDep.get(d).vd/1e12),marker:{color:"#e07a1f"},
+      hovertemplate:"%{y}<br>Directa: %{x:,.3f} billones COP<extra></extra>"},
+    {type:"bar",orientation:"h",name:"Otras modalidades",y:top,x:top.map(d=>(porDep.get(d).v-porDep.get(d).vd)/1e12),marker:{color:"#0b5fa5"},
+      hovertemplate:"%{y}<br>Otras: %{x:,.3f} billones COP<extra></extra>"}],
+    {...L,barmode:"stack",margin:{l:150,r:10,t:8,b:36},xaxis:{title:"billones de COP",tickformat:",.1f",gridcolor:"#eef1f7"},legend:{orientation:"h",y:1.06}},cfg);
+
+  // Treemap de modalidades (respeta departamento y fechas, ignora modalidad)
+  const porMod=agg(sel(true,false),r=>r[2]), ms=[...porMod.keys()];
+  Plotly.react("trees",[{type:"treemap",labels:ms,parents:ms.map(()=>""),values:ms.map(m=>porMod.get(m).v),
+    marker:{colors:ms.map(m=>modColor[m]),line:{width:2,color:"#fff"}},textinfo:"label+percent root",
+    customdata:ms.map(m=>[porMod.get(m).n,pct(porMod.get(m).v,[...porMod.values()].reduce((a,b)=>a+b.v,0))]),
+    hovertemplate:"<b>%{label}</b><br>Valor: %{value:,.0f} COP<br>Contratos: %{customdata[0]:,}<extra></extra>"}],{...L,margin:{l:2,r:2,t:2,b:2}},cfg);
+
+  // Serie diaria (batch + capa rápida para días posteriores al último día del batch)
+  const porDia=agg(rows,r=>r[0]), dias=[...porDia.keys()].sort();
+  const ultimo=fechas[fechas.length-1], extra=D.rapida.filter(r=>r.fecha>ultimo&&r.fecha>=S.desde&&r.fecha<=S.hasta&&S.dep==="Todos"&&S.mod==="Todas");
+  Plotly.react("serie",[{type:"bar",name:"Valor por día",x:dias.concat(extra.map(e=>e.fecha)),y:dias.map(d=>porDia.get(d).v/1e12).concat(extra.map(e=>e.valor_total/1e12)),
+      marker:{color:dias.map(()=>"#0b5fa5").concat(extra.map(()=>"#1b9e77"))},hovertemplate:"%{x}<br>%{y:,.3f} billones COP<extra></extra>"},
+    {type:"scatter",mode:"lines+markers",name:"% valor directa",yaxis:"y2",x:dias,y:dias.map(d=>pct(porDia.get(d).vd,porDia.get(d).v)),line:{color:"#e07a1f",width:2.5},
+      hovertemplate:"%{x}<br>%{y:.1f} % directa<extra></extra>"}],
+    {...L,margin:{l:56,r:48,t:8,b:40},xaxis:{type:"category",tickangle:-45},yaxis:{title:"billones de COP",tickformat:",.1f",gridcolor:"#eef1f7"},
+     yaxis2:{overlaying:"y",side:"right",range:[0,100],ticksuffix:" %",showgrid:false},legend:{orientation:"h",y:1.1}},cfg);
+
+  // Heatmap departamento × modalidad (% del valor del departamento)
+  const base=sel(false,false), valDep=agg(base,r=>r[1]);
+  const top12=[...valDep.keys()].filter(d=>d!=="Sin dato").sort((a,b)=>valDep.get(b).v-valDep.get(a).v).slice(0,12);
+  const cel=new Map(); for(const r of base) if(top12.includes(r[1])) cel.set(r[1]+"|"+r[2],(cel.get(r[1]+"|"+r[2])||0)+r[4]);
+  const zz=top12.map(d=>mods.map(m=>pct(cel.get(d+"|"+m)||0,valDep.get(d).v)));
+  Plotly.react("heat",[{type:"heatmap",x:mods,y:top12,z:zz,colorscale:"YlGnBu",zmin:0,
+    text:zz.map(r=>r.map(v=>v==null?"":v.toFixed(0)+"%")),texttemplate:"%{text}",
+    hovertemplate:"%{y}<br>%{x}<br>%{z:.1f} % del valor<extra></extra>",colorbar:{thickness:12,ticksuffix:" %"}}],
+    {...L,margin:{l:150,r:10,t:8,b:20},xaxis:{tickangle:-25,automargin:true},yaxis:{autorange:"reversed",automargin:true}},cfg);
+  bindClicks();
+}
+let bound=false;
+function bindClicks(){ if(bound) return; bound=true;
+  $("mapa").on("plotly_click",e=>{S.dep=e.points[0].customdata; opts($("f-dep"),["Todos",...deps],S.dep); render();});
+  $("deps").on("plotly_click",e=>{S.dep=e.points[0].y; opts($("f-dep"),["Todos",...deps],S.dep); render();});
+  $("trees").on("plotly_click",e=>{S.mod=e.points[0].label; opts($("f-mod"),["Todas",...mods],S.mod); render();});
+}
+new Tabulator("#tabla",{data:D.entidades,layout:"fitColumns",height:420,pagination:true,paginationSize:10,
+  initialSort:[{column:"valor_total",dir:"desc"}],
+  columns:[{title:"Entidad",field:"entidad",headerFilter:"input",widthGrow:3},{title:"Departamento",field:"departamento",headerFilter:"input"},
+    {title:"Orden",field:"orden",width:110},{title:"Contratos",field:"contratos",sorter:"number",hozAlign:"right",formatter:c=>nf.format(c.getValue())},
+    {title:"Valor total",field:"valor_total",sorter:"number",hozAlign:"right",formatter:c=>cop(c.getValue())},
+    {title:"% valor directa",field:"pct_valor_directa",sorter:"number",width:170,formatter:c=>{const v=Number(c.getValue());if(!isFinite(v))return "–";return `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:#eef1f7;border-radius:4px;height:10px"><div style="width:${Math.min(100,v)}%;background:#e07a1f;height:10px;border-radius:4px"></div></div><span>${v.toFixed(0)}%</span></div>`}}]});
+const M=D.meta;
+$("pie").innerHTML=`<b>Fuente:</b> <a href="${M.url}">${M.fuente}</a> (API Socrata, datos abiertos) · <b>Fecha de corte</b> (última firma incluida): ${M.fecha_corte} · ${nf.format(+M.filas_curada)} contratos curados · generado ${M.generado}.
+ Pipeline: API → raw JSONL → Kafka → HDFS → PySpark (Parquet) → SQLite → este tablero.${D.repo?` · <a href="${D.repo}">Código</a>`:""}<br>Mapa: límites departamentales DANE (MGN 2018) vía caticoa3/colombia_mapa. Cifras en pesos colombianos; la modalidad "Contratación directa" incluye su variante "con ofertas".`;
+render();
+</script>
+</body>
+</html>

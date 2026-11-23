@@ -1,0 +1,9 @@
+Topic: secop.contratos.raw	TopicId: odClE3UCSXOUjR2HveVatg	PartitionCount: 3	ReplicationFactor: 1	Configs: 
+	Topic: secop.contratos.raw	Partition: 0	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
+	Topic: secop.contratos.raw	Partition: 1	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
+	Topic: secop.contratos.raw	Partition: 2	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
+
+GROUP             TOPIC               PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+secop-hdfs-writer secop.contratos.raw 0          10880           10880           0               -               -               -
+secop-hdfs-writer secop.contratos.raw 2          10923           10923           0               -               -               -
+secop-hdfs-writer secop.contratos.raw 1          10904           10904           0               -               -               -

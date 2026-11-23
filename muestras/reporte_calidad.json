@@ -1,0 +1,50 @@
+{
+  "generado": "2026-11-23T03:51:28Z",
+  "filas_curada": 32707,
+  "fecha_firma_min": "2026-10-25 01:14:46.013000",
+  "fecha_firma_max": "2026-11-07 23:29:53.311000",
+  "filas_raw": 65414,
+  "filas_descartadas": 0,
+  "descartes_por_razon": {
+    "sin_fecha_firma": 0,
+    "valor_nulo": 0,
+    "valor_negativo": 0,
+    "valor_mayor_1e+13": 0
+  },
+  "validaciones": [
+    {
+      "nombre": "conteo_mayor_que_cero",
+      "critica": true,
+      "ok": true,
+      "detalle": "32707 filas"
+    },
+    {
+      "nombre": "sin_nulos_en_columnas_clave",
+      "critica": true,
+      "ok": true,
+      "detalle": {
+        "id_registro": 0,
+        "fecha_de_firma": 0,
+        "valor_del_contrato": 0
+      }
+    },
+    {
+      "nombre": "sin_id_registro_repetidos",
+      "critica": true,
+      "ok": true,
+      "detalle": "0 repetidos"
+    },
+    {
+      "nombre": "valor_dentro_de_rango_0_a_1e13",
+      "critica": true,
+      "ok": true,
+      "detalle": "0 fuera de rango"
+    },
+    {
+      "nombre": "descartados_menos_del_5_pct",
+      "critica": false,
+      "ok": true,
+      "detalle": "0.00% descartado"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+# Pipeline de datos SECOP II: de la fuente al tablero
+Proyecto Pipeline de datos · Gestión de Datos Masivos G004 · Unidad 3 · I.U. Pascual Bravo
+
+**Tablero publicado (GitHub Pages):** <https://mafe97.github.io/pipeline-secop-contratacion/> · **Notebook ejecutado:** [`pipeline_secop.ipynb`](pipeline_secop.ipynb) · **Presentación:** [`slides/Presentacion_Pipeline_SECOP_II.pdf`](slides/Presentacion_Pipeline_SECOP_II.pdf)
+
+![Tablero](evidencias/tablero_completo.png)
+
+## 1. Fuente, pregunta y arquitectura (Fase 1)
+| | |
+|---|---|
+| **Fuente** | datos.gov.co (Socrata) · *SECOP II – Contratos Electrónicos* · dataset `jbjy-vk9h` · <https://www.datos.gov.co/resource/jbjy-vk9h.json> |
+| **Tamaño** | ~5,7 millones de registros en el dataset completo; la muestra de trabajo (contratos firmados del 25-oct al 7-nov-2026) tiene **32.707** contratos (≥ 20.000): 24.464 en la carga inicial + 8.243 en la carga incremental |
+| **Columna de fecha** | `fecha_de_firma` (también `ultima_actualizacion`); el dataset se actualiza a diario |
+| **id_registro** | `id_contrato` (p. ej. `CO1.PCCNTR.7285347`): verificado único en la API (`count(*) = count(distinct id_contrato)`) |
+| **Pregunta** | **¿Cuánta contratación pública se adjudica de forma directa y en qué departamentos, modalidades y entidades se concentra el dinero?** |
+| **Usuarios** | veedurías ciudadanas, periodistas de datos y entes de control que priorizan dónde mirar |
+
+> Cambiar de fuente solo exige tocar `pipeline/config.py` (dataset, `COL_ID`, `COL_FECHA`, `CAMPOS`) y la limpieza de `f5_curada.py`.
+
+### Diagrama (raw → curada → servicio)
+```mermaid
+flowchart LR
+  API[API Socrata<br/>datos.gov.co] -->|requests: paginación + reintentos| RAW[(RAW local<br/>JSONL fecha_ingesta=…<br/>+ manifiesto)]
+  RAW -->|productor, key = id_registro| K{{Kafka<br/>3 particiones}}
+  K -->|consumidor con grupo<br/>1 archivo por lote| H[(HDFS raw<br/>fuente/dataset/fecha_ingesta=…)]
+  H --> MR[MapReduce Python<br/>vs Spark]
+  H -->|PySpark: dedup, tipos, nulos| C[(CURADA<br/>Parquet anio_mes)]
+  C -->|validaciones críticas| S[(SERVICIO<br/>SQLite ind_*)]
+  K -->|Structured Streaming<br/>ventana 1 día + watermark + checkpoint| F[(capa rápida<br/>SQLite)]
+  S --> T[Tablero Plotly HTML<br/>GitHub Pages]
+  F --> T
+```
+**Lambda, no Kappa.** Hay una capa *batch* (raw → curada → indicadores) que reconstruye todo de forma determinista y con limpieza completa, y una capa *rápida* (streaming) que da cifras por ventana apenas llegan los mensajes. El tablero las une: usa la vista batch y completa con la capa rápida los días que el batch aún no contiene. Kappa no aplica porque necesitamos reprocesar el historial completo cuando cambian las reglas de limpieza (el batch lo hace barato desde el raw).
+
+## 2. Cómo ejecutarlo
+Requisitos: Docker (Compose v2). Todo corre en contenedores (Kafka, HDFS, Python/PySpark).
+```bash
+cp .env.example .env              # el token de Socrata es opcional (déjalo en blanco)
+docker compose up -d --build      # Kafka + NameNode + DataNode + contenedor de trabajo
+docker compose exec pipeline python -m pipeline.run_pipeline      # pipeline completo; se detiene si algo falla
+docker compose exec pipeline python -m dashboard.generar          # genera docs/index.html desde la zona de servicio
+# abrir docs/index.html en el navegador
+```
+Paso a paso: `docker compose exec pipeline python -m pipeline.<módulo>`
+
+| Fase | Módulo | Qué hace |
+|---|---|---|
+| 2 | `f2_ingesta` | API → sobres JSONL por `fecha_ingesta=…` + manifiesto + marca de agua |
+| 3 | `f3_kafka_producer`, `f3_kafka_consumer` | publica a Kafka (key = id) y el consumidor escribe lotes en HDFS |
+| 4 | `f4_mapreduce_vs_spark` | MapReduce (`pipeline/mapreduce/`) vs Spark sobre el raw de HDFS |
+| 5 | `f5_curada` | limpieza con PySpark → Parquet particionado |
+| 6 | `f6_calidad`, `demo_idempotencia` | validaciones + prueba de idempotencia (corre el pipeline dos veces) |
+| 7 | `f7_streaming`, `demo_streaming` | Structured Streaming y prueba de reinicio |
+| 8 | `f8_servicio`, `dashboard/generar.py` | indicadores en SQLite y tablero HTML |
+| opc. | `airflow/dags/secop_pipeline_dag.py` | DAG diario con reintentos (ver Limitaciones) |
+
+* **Notebook** (fases 2–8 con explicaciones y salidas): `tools/ejecutar_notebook.sh` lo construye y ejecuta dentro del contenedor.
+* **Pruebas:** `docker compose exec pipeline pytest -q tests` · **Evidencias:** `bash run_evidencias.sh`.
+* **Presentación:** `AUTOR="Nombre" GRUPO="G004" python3 slides/build_slides.py` (requiere Chrome; genera el PDF con las cifras reales de la corrida).
+* **Reinicio limpio:** `docker compose down -v` y borrar `data/raw data/state data/servicio data/calidad` y `data/checkpoints` (esta última pertenece a root: `docker compose exec pipeline rm -rf /app/data/checkpoints`).
+
+## 3. Decisiones por fase
+**Fase 2 – Ingesta.** `requests` con paginación (`$limit=10000`, `$offset`, orden estable por `fecha_de_firma,id_contrato`) y hasta 5 reintentos con espera exponencial ante 429/5xx/red. Cada registro va en un **sobre** con el original intacto en `payload`. JSONL en `fecha_ingesta=AAAA-MM-DD/` y un **manifiesto** por corrida (URL, parámetros, páginas, conteos, marca de agua antes/después) en `_manifiestos/`. Muestra en `muestras/`.
+
+**Fase 3 – Kafka.** Tópico con 3 particiones; key = `id_registro` (un mismo contrato siempre cae en la misma partición); productor idempotente con `acks=all`; consumidor con grupo y commit manual **después** de escribir en HDFS (at-least-once).
+*¿Qué pasa si el productor se ejecuta dos veces?* (1) un **ledger** de archivos ya publicados hace que la segunda corrida no publique nada; (2) si se fuerza (`--force`), el tópico sí duplica (32.707 → 65.414, ver `evidencias/kafka_duplicados.txt`) pero la zona curada deduplica por `id_registro` y el streaming usa `dropDuplicates`, así que curada, servicio y streaming siguen en 32.707. Kafka es un registro de eventos: se tolera el duplicado en tránsito y se elimina al curar.
+
+**Fase 4 – HDFS y MapReduce.** Ruta `/datalake/raw/<fuente>/<dataset>/fecha_ingesta=…/lote_p<partición>_o<ini>-<fin>.jsonl`: **un archivo por lote de 5.000 mensajes** (no por mensaje), con nombre determinista alineado a offsets, de modo que reescribir un lote es idempotente. MapReduce (mapper/reducer Python, flujo `mapper | sort | reducer` de Hadoop Streaming leyendo de HDFS por WebHDFS) cuenta contratos y suma valor por departamento; Spark lo calcula igual y **coinciden en los 34 departamentos** (`evidencias/mapreduce_vs_spark.txt`). *Nota:* el MR se ejecuta como tubería local sobre datos leídos de HDFS, no como job en el clúster YARN (no desplegamos YARN).
+
+**Fase 5 – Zona curada.** Cada problema se mide y se guarda en `data/calidad/curada_stats.json` (copia en `muestras/`). Las cifras de la tabla son de la última corrida, que se ejecutó **después** de republicar Kafka a propósito (por eso el raw trae cada contrato dos veces):
+| Problema | Decisión | Por qué | Antes → después |
+|---|---|---|---|
+| Mismo `id_registro` repetido | una fila por id: mayor `fecha_ingesta`, luego mayor `ultima_actualizacion` | refleja el estado actual y no cuenta dos veces el dinero | 65.414 → 32.707 (en la ingesta limpia: 32.707 → 32.707) |
+| Fechas y números como texto | `timestamp` / `double`; lo inválido → NULL | necesarios para agregar; NULL es auditable | 0 nulos en la muestra |
+| Nulos disfrazados (`No definido`, `Sin Descripcion`, vacío) | → NULL; `departamento` → `Sin dato` | no confundir "no definido" con un valor | 896 departamentos "No Definido" unificados |
+| Modalidad escrita de varias formas (`Contratación directa` vs `Contratación Directa (con ofertas)`, tildes, etc.) | catálogo de 8 grupos + `es_directa` | si no, la contratación directa se subestima | 13 modalidades → 8 |
+| Valor nulo / negativo / > 1e13 o sin fecha de firma | se descartan y se cuentan por razón | distorsionan sumas; el raw conserva todo | 0 descartes en esta muestra |
+
+*Honestidad:* en esta ventana la fuente no traía nulos de fecha/valor ni valores absurdos, así que las reglas de descarte no se activaron; están medidas y listas. Las de duplicados sí se activaron con la republicación forzada.
+**Partición:** `anio_mes` (2 particiones en la muestra). Las consultas son temporales; el mes da pocas particiones grandes (el día generaría archivos diminutos) y crece de forma predecible; `departamento` (34 valores muy sesgados a Bogotá/Valle/Antioquia) daría particiones desiguales. **Tamaño:** JSONL raw sin duplicados ≈ 145 MB → Parquet 2,2 MB (−98,5 %); el Parquet guarda solo las ~25 columnas que se usan (el JSONL conserva las ~100 del original) además de la compresión columnar.
+
+**Fase 6 – Calidad, incremental, idempotencia.** `f6_calidad` corre 5 validaciones (4 críticas: conteo > 0, sin nulos en id/fecha/valor, sin `id_registro` repetidos, valor en [0, 1e13]; 1 de advertencia: descartados < 5 %) y guarda `reporte_calidad.json` con las filas descartadas. Si una crítica falla → `exit 1` y `run_pipeline` se detiene. **Marca de agua**: última `fecha_de_firma` cargada (`data/state/watermark.json`) + ids en esa marca exacta para no repetir el borde; la ventana `[INGEST_DESDE, INGEST_HASTA)` es fija para que sea reproducible. Evidencia: ampliar `INGEST_HASTA` trajo solo 8.243 contratos nuevos (omitió 1 del borde) y repetir la misma ventana escribió 0 (`evidencias/incremental_marca_de_agua.txt`). **Idempotencia**: `demo_idempotencia` corre el pipeline dos veces y compara 8 conteos (raw, Kafka, HDFS, curada, batch, streaming): todos iguales (`evidencias/idempotencia.txt`). La curada se *reconstruye* desde el raw con `overwrite` de particiones y el servicio usa `replace`, por eso repetir no duplica.
+
+**Fase 7 – Streaming (Lambda).** Structured Streaming lee el tópico, agrega por **ventana de 1 día** (event time `fecha_de_firma`) con **watermark de 7 días** y **checkpoint** (`data/checkpoints/stream`); salida por `foreachBatch` con *upsert* en SQLite (clave = ventana). Al reiniciar, el checkpoint evita releer offsets: segunda corrida 0 filas de entrada y mismas 14 ventanas / 32.707 contratos (`evidencias/streaming_reinicio.txt`). Usa `Trigger.availableNow` (procesa lo pendiente y termina) para poder orquestarlo y demostrar reinicios. Los totales de la capa rápida coinciden con los de la batch.
+
+**Fase 8 – Servicio y tablero.** SQLite con indicadores listos (`ind_directa_por_departamento`, `ind_modalidad`, `ind_top_entidades`, `ind_serie_diaria`, más `ind_cubo_dia_dep_modalidad`, `ind_entidades_top300` y `meta_corte`). **Tablero: Plotly HTML** (una de las herramientas permitidas en el enunciado), estático y publicado en GitHub Pages; lo genera `dashboard/generar.py` leyendo solo la zona de servicio. Incluye título que responde la pregunta, respuesta dinámica, 5 KPIs, **mapa coroplético** (límites DANE), barras apiladas, treemap, serie diaria con eje secundario, **mapa de calor** departamento × modalidad y **tabla Tabulator** con búsqueda y orden; filtros por fechas, departamento y modalidad (clic en mapa/barras/treemap filtra); pie con **fuente y fecha de corte**. Resultado: 32.707 contratos, $8,51 billones COP, 73,8 % de los contratos y 30,0 % del valor por contratación directa; 3 departamentos concentran el 81 % del valor.
+
+## 4. Estructura y evidencias
+```
+pipeline/    config, common, f2…f8, mapreduce/, demos, conteos, run_pipeline
+dashboard/   generar.py + plantilla.html + assets/ (geojson)       docs/index.html   tablero publicado
+pipeline_secop.ipynb   notebook ejecutado (fases 2–8)              slides/   presentación (PDF, 8 diapositivas)
+airflow/dags/   DAG opcional      tests/   pytest      tools/   construcción del notebook
+muestras/    raw (200 líneas), manifiestos, reporte de calidad y tablas de servicio (CSV)
+evidencias/  salidas de Kafka, HDFS, MapReduce vs Spark, idempotencia, streaming, incremental, calidad y capturas del tablero
+```
+Capturas: `evidencias/tablero_completo.png` y `evidencias/hdfs_namenode_explorer.png` (esta última se tomó tras la republicación forzada, por eso lista lotes adicionales).
+
+## 5. Limitaciones
+- Hive y Airflow son opcionales: se incluye el DAG de Airflow, pero no se desplegó ni probó en un Airflow real; no se hizo Hive.
+- MapReduce no corre sobre YARN (ver Fase 4). Kafka y HDFS son de un solo nodo (replicación 1 en Kafka).
+- En el mapa del tablero no se ve el archipiélago de San Andrés (queda fuera del encuadre); sí aparece en las demás visualizaciones.
+- Las reglas de descarte (nulos, valores absurdos) no se activaron con esta muestra, porque la fuente venía limpia en esos campos.
+- El tablero usa CDN (Plotly.js y Tabulator): necesita conexión a internet para abrirse.

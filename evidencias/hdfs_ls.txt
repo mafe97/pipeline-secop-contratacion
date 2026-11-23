@@ -1,0 +1,25 @@
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:45 /datalake/curada
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:45 /datalake/curada/datos.gov.co
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:48 /datalake/curada/datos.gov.co/jbjy-vk9h
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:48 /datalake/curada/datos.gov.co/jbjy-vk9h/anio_mes=2026-10
+-rw-r--r--   3 root supergroup    1168460 2026-11-23 03:48 /datalake/curada/datos.gov.co/jbjy-vk9h/anio_mes=2026-10/part-00000-0b05be99-a6df-4308-a0d8-eaa71eae7b52.c000.snappy.parquet
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:48 /datalake/curada/datos.gov.co/jbjy-vk9h/anio_mes=2026-11
+-rw-r--r--   3 root supergroup    1016407 2026-11-23 03:48 /datalake/curada/datos.gov.co/jbjy-vk9h/anio_mes=2026-11/part-00000-0b05be99-a6df-4308-a0d8-eaa71eae7b52.c000.snappy.parquet
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:44 /datalake/raw
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:44 /datalake/raw/datos.gov.co
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h
+drwxr-xr-x   - root supergroup          0 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23
+-rw-r--r--   1 root supergroup   22139262 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p0_o0000000000-0000004999.jsonl
+-rw-r--r--   1 root supergroup   13803931 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p0_o0000005000-0000008117.jsonl
+-rw-r--r--   1 root supergroup    8323104 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p0_o0000008118-0000009999.jsonl
+-rw-r--r--   1 root supergroup    3876493 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p0_o0000010000-0000010879.jsonl
+-rw-r--r--   1 root supergroup   22168706 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p1_o0000000000-0000004999.jsonl
+-rw-r--r--   1 root supergroup   13965594 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p1_o0000005000-0000008153.jsonl
+-rw-r--r--   1 root supergroup    8158163 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p1_o0000008154-0000009999.jsonl
+-rw-r--r--   1 root supergroup    3997451 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p1_o0000010000-0000010903.jsonl
+-rw-r--r--   1 root supergroup   22133294 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p2_o0000000000-0000004999.jsonl
+-rw-r--r--   1 root supergroup   14133957 2026-11-23 03:44 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p2_o0000005000-0000008191.jsonl
+-rw-r--r--   1 root supergroup    7984202 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p2_o0000008192-0000009999.jsonl
+-rw-r--r--   1 root supergroup    4081822 2026-11-23 03:45 /datalake/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/lote_p2_o0000010000-0000010922.jsonl
+2.1 M    6.3 M    /datalake/curada
+138.1 M  138.1 M  /datalake/raw

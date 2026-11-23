@@ -1,0 +1,22 @@
+Carga incremental con marca de agua (manifiestos reales de cada corrida)
+
+1) carga inicial (ventana 25-oct → 5-nov)
+   registros_descargados: 24464
+   registros_omitidos_por_marca: 0
+   registros_escritos: 24464
+   marca_agua_antes: None
+   marca_agua_despues: 2026-11-04T23:58:02.186
+
+2) se amplía INGEST_HASTA a 8-nov: solo lo nuevo
+   registros_descargados: 8244
+   registros_omitidos_por_marca: 1
+   registros_escritos: 8243
+   marca_agua_antes: 2026-11-04T23:58:02.186
+   marca_agua_despues: 2026-11-07T23:29:53.311
+
+3) misma ventana otra vez: 0 nuevos
+   registros_descargados: 1
+   registros_omitidos_por_marca: 1
+   registros_escritos: 0
+   marca_agua_antes: 2026-11-07T23:29:53.311
+   marca_agua_despues: 2026-11-07T23:29:53.311

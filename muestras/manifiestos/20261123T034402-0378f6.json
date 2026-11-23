@@ -1,0 +1,22 @@
+{
+  "run_id": "20261123T034402-0378f6",
+  "fuente": "datos.gov.co",
+  "dataset": "jbjy-vk9h",
+  "url": "https://www.datos.gov.co/resource/jbjy-vk9h.json",
+  "parametros": {
+    "$where": "fecha_de_firma >= '2026-10-25T00:00:00' AND fecha_de_firma < '2026-11-05T00:00:00'",
+    "$order": "fecha_de_firma,id_contrato",
+    "$limit": 10000,
+    "$offset": "0..N (paginado)"
+  },
+  "fecha_ingesta": "2026-11-23",
+  "paginas": 3,
+  "registros_descargados": 24464,
+  "registros_omitidos_por_marca": 0,
+  "registros_escritos": 24464,
+  "archivo": "/app/data/raw/datos.gov.co/jbjy-vk9h/fecha_ingesta=2026-11-23/part-20261123T034402-0378f6.jsonl",
+  "marca_agua_antes": null,
+  "marca_agua_despues": "2026-11-04T23:58:02.186",
+  "segundos": 17.4,
+  "finalizado": "2026-11-23T03:44:20Z"
+}

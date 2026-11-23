@@ -1,0 +1,3 @@
+Tras arranque #1: ventanas=14 contratos=32707
+Tras arranque #2: ventanas=14 contratos=32707
+RESULTADO: el reinicio no reprocesó ni duplicó

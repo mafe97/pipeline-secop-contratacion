@@ -1,0 +1,56 @@
+{
+  "generado": "2026-11-23T03:50:57Z",
+  "decisiones": {
+    "duplicados": {
+      "problema": "El mismo id_registro puede llegar varias veces (reingestas, republicación en Kafka, contratos actualizados).",
+      "decision": "Conservar una fila por id_registro: la de mayor fecha_ingesta y, en empate, la de mayor ultima_actualizacion.",
+      "por_que": "El raw es un historial; la versión más reciente refleja el estado actual del contrato y evita contar dos veces el dinero.",
+      "filas_antes": 65414,
+      "filas_despues": 32707,
+      "eliminadas": 32707
+    },
+    "tipos": {
+      "problema": "Socrata entrega todo como texto (fechas ISO y valores numéricos como string).",
+      "decision": "fecha_* -> timestamp; valor_* -> double. Lo que no se pueda convertir queda NULL (no se inventa un valor).",
+      "por_que": "Las agregaciones por fecha y suma de dinero necesitan tipos reales; NULL explícito es auditable.",
+      "fecha_firma_nulas": 0,
+      "valor_nulos": 0
+    },
+    "texto": {
+      "problema": "Nulos disfrazados ('No Definido', 'Sin Descripcion', ''), espacios sobrantes y modalidades escritas de varias formas ('Contratación directa' vs 'Contratación Directa (con ofertas)').",
+      "decision": "Nulos disfrazados -> NULL (departamento -> 'Sin dato'); modalidad normalizada a un catálogo de 8 grupos; se crea es_directa (bool).",
+      "por_que": "Si no se unifican, la misma modalidad se cuenta como categorías distintas y el % de contratación directa se subestima.",
+      "departamento_no_definido_antes": 896,
+      "modalidades_distintas_antes": 13,
+      "modalidades_distintas_despues": 8
+    },
+    "descartes": {
+      "problema": "Filas sin fecha de firma o con valor nulo/negativo/absurdo (> 10 billones COP) no pueden ubicarse en el tiempo ni sumarse.",
+      "decision": "Se descartan y se cuentan por razón en el reporte de calidad (no se borran en silencio; el raw conserva todo).",
+      "por_que": "Un solo valor absurdo distorsiona totales y promedios por departamento.",
+      "filas_antes": 32707,
+      "filas_despues": 32707,
+      "descartadas": 0
+    }
+  },
+  "filas_raw": 65414,
+  "descartes_por_razon": {
+    "sin_fecha_firma": 0,
+    "valor_nulo": 0,
+    "valor_negativo": 0,
+    "valor_mayor_1e+13": 0
+  },
+  "filas_deduplicadas": 32707,
+  "filas_final": 32707,
+  "descartadas_total": 0,
+  "particion": {
+    "columna": "anio_mes",
+    "particiones": 2,
+    "justificacion": "Las consultas del tablero filtran por periodo; el mes da pocas particiones grandes (sin el problema de archivos diminutos que tendría el día) y crece de forma predecible. departamento (33 valores, muy sesgado hacia Bogotá/Valle/Antioquia) produciría particiones desiguales."
+  },
+  "tamano": {
+    "jsonl_raw_bytes": 289531958,
+    "parquet_bytes": 2200859,
+    "reduccion_pct": 99.2
+  }
+}

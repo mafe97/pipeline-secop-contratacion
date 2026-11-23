@@ -1,0 +1,11 @@
+zona / conteo                          corrida 1     corrida 2  igual
+raw_local_lineas                           32707         32707  SI
+kafka_mensajes                             32707         32707  SI
+hdfs_lineas                                32707         32707  SI
+curada_filas(meta_corte)                   32707         32707  SI
+batch_dias                                    14            14  SI
+batch_contratos_en_serie                   32707         32707  SI
+rapida_ventanas                               14            14  SI
+rapida_contratos                           32707         32707  SI
+
+RESULTADO: IDEMPOTENTE - la segunda corrida no duplicó nada

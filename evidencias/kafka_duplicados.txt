@@ -1,0 +1,17 @@
+--- productor otra vez (sin --force) ---
+2026-11-23 03:50:26,322 INFO [productor] nada nuevo que publicar (todos los archivos ya están en el ledger)
+--- conteos antes de forzar ---
+{"raw_local_lineas":32707,"kafka_mensajes":32707,"hdfs_lineas":32707,"curada_filas(meta_corte)":32707,"batch_dias":14,"batch_contratos_en_serie":32707,"rapida_ventanas":14,"rapida_contratos":32707}
+--- productor con --force (simula una republicación por error) ---
+2026-11-23 03:50:30,530 INFO [productor] resumen: {'publicados': 32707, 'por_particion': {0: 10880, 1: 10904, 2: 10923}}
+2026-11-23 03:50:50,199 INFO [consumidor] resumen: {'mensajes_leidos': 32707, 'archivos_escritos': 9}
+2026-11-23 03:51:02,359 INFO [curada] filas raw: 65414
+2026-11-23 03:51:16,577 INFO [curada] curada: 65414 -> 32707 -> 32707 filas | JSONL 289.5 MB vs Parquet 2.2 MB
+2026-11-23 03:51:28,581 INFO [calidad] [OK] conteo_mayor_que_cero (crítica) -> 32707 filas
+2026-11-23 03:51:28,581 INFO [calidad] [OK] sin_nulos_en_columnas_clave (crítica) -> {'id_registro': 0, 'fecha_de_firma': 0, 'valor_del_contrato': 0}
+2026-11-23 03:51:28,581 INFO [calidad] [OK] sin_id_registro_repetidos (crítica) -> 0 repetidos
+2026-11-23 03:51:28,581 INFO [calidad] [OK] valor_dentro_de_rango_0_a_1e13 (crítica) -> 0 fuera de rango
+2026-11-23 03:51:28,581 INFO [calidad] [OK] descartados_menos_del_5_pct -> 0.00% descartado
+2026-11-23 03:52:07,797 INFO [streaming] fin de la corrida: {'filas_entrada_ultima_corrida': 32707, 'batch_id': 2}
+--- conteos tras forzar: Kafka y HDFS se duplican, curada/servicio/streaming NO ---
+{"raw_local_lineas":32707,"kafka_mensajes":65414,"hdfs_lineas":65414,"curada_filas(meta_corte)":32707,"batch_dias":14,"batch_contratos_en_serie":32707,"rapida_ventanas":14,"rapida_contratos":32707}

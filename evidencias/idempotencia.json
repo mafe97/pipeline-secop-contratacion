@@ -1,0 +1,22 @@
+{
+  "corrida1": {
+    "raw_local_lineas": 32707,
+    "kafka_mensajes": 32707,
+    "hdfs_lineas": 32707,
+    "curada_filas(meta_corte)": 32707,
+    "batch_dias": 14,
+    "batch_contratos_en_serie": 32707,
+    "rapida_ventanas": 14,
+    "rapida_contratos": 32707
+  },
+  "corrida2": {
+    "raw_local_lineas": 32707,
+    "kafka_mensajes": 32707,
+    "hdfs_lineas": 32707,
+    "curada_filas(meta_corte)": 32707,
+    "batch_dias": 14,
+    "batch_contratos_en_serie": 32707,
+    "rapida_ventanas": 14,
+    "rapida_contratos": 32707
+  }
+}
