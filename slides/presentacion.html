@@ -35,7 +35,7 @@ table.t{border-collapse:collapse;width:100%}.t th{background:#0b5fa5;color:#fff;
 <div class="cols"><div><h4>Ingesta (Fase 2)</h4><ul><li>API Socrata con <b>paginación</b> ($limit/$offset, orden estable) y <b>5 reintentos</b> con espera exponencial</li>
 <li><b>Sobre JSON</b>: <code>fuente, dataset, id_registro, fecha_ingesta, payload</code> (registro original intacto)</li>
 <li>JSONL en <code>fecha_ingesta=AAAA-MM-DD/</code> + <b>manifiesto</b> por corrida</li>
-<li>Primera carga: <b>24.464</b> registros en 3 páginas</li></ul>
+<li>Carga inicial: <b>24.464</b> registros (25-oct → 5-nov); incremental: <b>+8.243</b></li></ul>
 <pre>{"fuente":"datos.gov.co","dataset":"jbjy-vk9h",
  "id_registro":"CO1.PCCNTR.…","fecha_ingesta":"2026-11-23",
  "payload":{…registro original…}}</pre></div>
@@ -52,12 +52,12 @@ table.t{border-collapse:collapse;width:100%}.t th{background:#0b5fa5;color:#fff;
 mapper  → departamento \t 1 \t valor
 reducer → departamento \t n \t Σ valor</pre>
 <div class="box big">MapReduce vs Spark: <b>COINCIDEN</b><br>34 departamentos · 32.707 contratos<br>diferencias: <b>ninguna</b></div>
-<p class="small">Nota: el MR corre como tubería local sobre datos leídos de HDFS (no en YARN).</p></div></div>
+<div class="box"><b>Job real de Hadoop Streaming</b> (<code>hadoop-streaming-3.2.1.jar</code>, ejecutor local de MapReduce; sin YARN): 32.707 registros de entrada → 34 de salida · vs Spark: <b>COINCIDEN</b></div></div></div>
 <h4 style="margin-top:14px">Resultado: contratos y valor (miles de millones COP) por departamento</h4>
-<table class="t small"><tr><th>Departamento</th><th>Spark contratos</th><th>MapReduce contratos</th><th>Spark valor</th><th>MapReduce valor</th><th></th></tr><tr><td>Distrito Capital de Bogotá</td><td>5.847</td><td>5.847</td><td>4,809</td><td>4,809</td><td class=ok>✔</td></tr><tr><td>Valle del Cauca</td><td>3.322</td><td>3.322</td><td>236</td><td>236</td><td class=ok>✔</td></tr><tr><td>Antioquia</td><td>3.031</td><td>3.031</td><td>1,569</td><td>1,569</td><td class=ok>✔</td></tr><tr><td>Bolívar</td><td>1.808</td><td>1.808</td><td>92</td><td>92</td><td class=ok>✔</td></tr><tr><td>Norte de Santander</td><td>1.783</td><td>1.783</td><td>59</td><td>59</td><td class=ok>✔</td></tr></table></div>
+<table class="t small"><tr><th>Departamento</th><th>Spark contratos</th><th>MapReduce contratos</th><th>Spark valor</th><th>MapReduce valor</th><th></th></tr><tr><td>Distrito Capital de Bogotá</td><td>5.847</td><td>5.847</td><td>4,809</td><td>4,809</td><td class=ok>✔</td></tr><tr><td>Valle del Cauca</td><td>3.322</td><td>3.322</td><td>236</td><td>236</td><td class=ok>✔</td></tr><tr><td>Antioquia</td><td>3.031</td><td>3.031</td><td>1,569</td><td>1,569</td><td class=ok>✔</td></tr></table></div>
     <footer>Pipeline SECOP II · Gestión de Datos Masivos G004 · [Tu nombre y apellidos]<b>4/8</b></footer></section><section class="slide"><header><span>Zona curada con PySpark → Parquet</span><small>Fase 5</small></header><div class="body">
 <table class="t"><tr><th>Problema</th><th>Decisión y por qué</th><th>Antes → después</th></tr>
-<tr><td>Duplicados por <code>id_registro</code></td><td>Una fila por id (mayor fecha_ingesta, luego ultima_actualizacion): refleja el estado actual y no cuenta el dinero dos veces</td><td>65.414 → 32.707<br><small>(corrida tras republicar Kafka a propósito: ×2)</small></td></tr>
+<tr><td>Duplicados por <code>id_registro</code></td><td>Una fila por id (mayor fecha_ingesta, luego ultima_actualizacion): refleja el estado actual y no cuenta el dinero dos veces</td><td>32.707 → 32.707<br><small>republicando Kafka a propósito: 65.414 → 32.707</small></td></tr>
 <tr><td>Fechas y valores como texto</td><td>→ timestamp / double; lo inválido a NULL (no se inventa)</td><td>0 fechas y 0 valores nulos</td></tr>
 <tr><td>Nulos disfrazados («No definido»)</td><td>→ NULL; departamento → «Sin dato»</td><td>896 unificados</td></tr>
 <tr><td>Modalidad escrita de varias formas</td><td>Catálogo de 8 grupos + <code>es_directa</code>; si no, la directa se subestima</td><td>13 → 8 modalidades</td></tr>

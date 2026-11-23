@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contratación pública SECOP II · ¿cuánto se adjudica de forma directa?</title>
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
-<link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" rel="stylesheet">
-<script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+<script src="vendor/plotly.min.js" charset="utf-8"></script>
+<link href="vendor/tabulator_simple.min.css" rel="stylesheet">
+<script src="vendor/tabulator.min.js"></script>
 <style>
 :root{--bg:#f4f6fb;--card:#fff;--ink:#14213d;--mut:#5b6785;--line:#e3e8f2;--brand:#0b5fa5;--acc:#e07a1f;--ok:#1b9e77}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Inter","Segoe UI",system-ui,sans-serif}
@@ -99,12 +99,16 @@ function render(){
 
   // Mapa + barras por departamento (ignoran el filtro de departamento para poder compararlos)
   const porDep=agg(sel(false,true),r=>r[1]), nombres=[...porDep.keys()];
-  const locs=nombres.map(d=>D.geoClave[d]), z=nombres.map(d=>pct(porDep.get(d).vd,porDep.get(d).v));
+  const SAI=nombres.find(d=>d.startsWith("San Andr")), locs=nombres.map(d=>D.geoClave[d]), z=nombres.map(d=>pct(porDep.get(d).vd,porDep.get(d).v));
   Plotly.react("mapa",[{type:"choropleth",geojson:GEO,featureidkey:"properties.clave",locations:locs,z,customdata:nombres,
     colorscale:[[0,"#e8f1fa"],[.5,"#5aa0d6"],[1,"#0a2f5c"]],zmin:0,zmax:100,marker:{line:{color:"#fff",width:.6}},
     colorbar:{orientation:"h",x:.5,xanchor:"center",y:-.02,len:.8,thickness:10,title:{text:"% del valor por contratación directa",side:"top"},ticksuffix:" %"},
-    hovertemplate:"<b>%{customdata}</b><br>% valor directa: %{z:.1f} %<extra></extra>"}],
-    {...L,margin:{l:0,r:0,t:0,b:40},geo:{visible:false,bgcolor:"rgba(0,0,0,0)",projection:{type:"mercator"},lonaxis:{range:[-79.6,-66.5]},lataxis:{range:[-4.4,13.4]}}},cfg);
+    hovertemplate:"<b>%{customdata}</b><br>% valor directa: %{z:.1f} %<extra></extra>"},
+    {type:"scattergeo",geo:"geo2",mode:"markers",lon:[-81.72],lat:[12.55],customdata:[SAI],showlegend:false,
+    marker:{size:26,color:[SAI?pct(porDep.get(SAI).vd,porDep.get(SAI).v):null],colorscale:[[0,"#e8f1fa"],[.5,"#5aa0d6"],[1,"#0a2f5c"]],cmin:0,cmax:100,line:{color:"#fff",width:1}},
+    hovertemplate:"<b>%{customdata}</b><br>% valor directa: %{marker.color:.1f} %<extra></extra>"}],
+    {...L,margin:{l:0,r:0,t:0,b:40},annotations:[{x:.02,y:.985,xref:"paper",yref:"paper",showarrow:false,xanchor:"left",yanchor:"top",font:{size:10,color:"#5b6785"},text:"Archipiélago de San Andrés,<br>Providencia y Santa Catalina"}],
+    geo2:{visible:false,bgcolor:"rgba(0,0,0,0)",domain:{x:[0,.3],y:[.7,.95]},fitbounds:false,projection:{type:"mercator"},lonaxis:{range:[-83.2,-80.2]},lataxis:{range:[11.3,13.8]}},geo:{domain:{x:[0,1],y:[0,1]},visible:false,bgcolor:"rgba(0,0,0,0)",projection:{type:"mercator"},lonaxis:{range:[-79.6,-66.5]},lataxis:{range:[-4.4,13.4]}}},cfg);
   const top=nombres.filter(d=>d!=="Sin dato").sort((a,b)=>porDep.get(b).v-porDep.get(a).v).slice(0,15).reverse();
   Plotly.react("deps",[{type:"bar",orientation:"h",name:"Contratación directa",y:top,x:top.map(d=>porDep.get(d).vd/1e12),marker:{color:"#e07a1f"},
       hovertemplate:"%{y}<br>Directa: %{x:,.3f} billones COP<extra></extra>"},

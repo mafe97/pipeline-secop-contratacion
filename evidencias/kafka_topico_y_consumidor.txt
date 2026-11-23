@@ -1,4 +1,4 @@
-Topic: secop.contratos.raw	TopicId: odClE3UCSXOUjR2HveVatg	PartitionCount: 3	ReplicationFactor: 1	Configs: 
+Topic: secop.contratos.raw	TopicId: rnNUPsG5TlyC_W-efiMEJQ	PartitionCount: 3	ReplicationFactor: 1	Configs: 
 	Topic: secop.contratos.raw	Partition: 0	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
 	Topic: secop.contratos.raw	Partition: 1	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
 	Topic: secop.contratos.raw	Partition: 2	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 

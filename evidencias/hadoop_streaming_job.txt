@@ -1,0 +1,11 @@
+INFO mapreduce.Job: Job job_local1046237908_0001 running in uber mode : false
+INFO mapreduce.Job: Job job_local1046237908_0001 completed successfully
+contadores finales del job:
+  Map input records=32707
+  Map output records=32707
+  Reduce input records=32707
+  Reduce output records=34
+--- hdfs dfs -ls /datalake/mapreduce_out
+Found 2 items
+-rw-r--r--   1 root supergroup          0 2026-11-23 04:14 /datalake/mapreduce_out/_SUCCESS
+-rw-r--r--   1 root supergroup       1064 2026-11-23 04:14 /datalake/mapreduce_out/part-00000

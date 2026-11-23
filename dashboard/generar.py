@@ -6,6 +6,7 @@ los filtros del tablero solo suman/filtran esas tablas ya agregadas.
 """
 import json
 import os
+import shutil
 import sqlite3
 import unicodedata
 from pathlib import Path
@@ -59,6 +60,7 @@ def main() -> None:
     html = html.replace("/*__GEO__*/null", json.dumps(geo, ensure_ascii=False, separators=(",", ":")))
     SALIDA.parent.mkdir(parents=True, exist_ok=True)
     SALIDA.write_text(html, encoding="utf-8")
+    shutil.copytree(BASE / "vendor", SALIDA.parent / "vendor", dirs_exist_ok=True)  # librerías locales: funciona sin internet
     print(f"tablero generado: {SALIDA} ({SALIDA.stat().st_size / 1e3:.0f} KB) · corte {meta['fecha_corte']}")
 
 

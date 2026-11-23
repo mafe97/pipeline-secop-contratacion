@@ -7,9 +7,9 @@ for linea in sys.stdin:
     clave, c, v = linea.rstrip("\n").split("\t")
     if clave != actual:
         if actual is not None:
-            print(f"{actual}\t{n}\t{total!r}")
+            print("{}\t{}\t{!r}".format(actual, n, total))
         actual, n, total = clave, 0, 0.0
     n += int(c)
     total += float(v)
 if actual is not None:
-    print(f"{actual}\t{n}\t{total!r}")
+    print("{}\t{}\t{!r}".format(actual, n, total))

@@ -1,7 +1,7 @@
 """Genera slides/presentacion.html y el PDF (máx. 8 diapositivas) con las cifras REALES de la corrida.
 Uso: AUTOR="Nombre Apellido" GRUPO="G004" REPO_URL=... PAGES_URL=... python3 slides/build_slides.py
 """
-import glob, html, json, os, sqlite3, subprocess
+import glob, html, json, os, re, sqlite3, subprocess
 from pathlib import Path
 
 R = Path(__file__).resolve().parent.parent
@@ -15,7 +15,12 @@ nf = lambda v: f"{int(v):,}".replace(",", ".")
 cur, cal = J("data/calidad/curada_stats.json"), J("data/calidad/reporte_calidad.json")
 idem, mrs = J("evidencias/idempotencia.json"), J("data/calidad/mapreduce_vs_spark.json")
 man = sorted(glob.glob(str(R / "data/raw/*/*/_manifiestos/*.json")))
-m1, m2 = json.load(open(man[0])), json.load(open(man[1])) if len(man) > 1 else {}
+m1 = json.load(open(man[0]))
+inc = [int(x) for x in re.findall(r"registros_escritos: (\d+)", (R / "evidencias/incremental_marca_de_agua.txt").read_text(encoding="utf-8"))]  # [carga inicial, incremental, repetida]
+forzada = re.search(r"curada: (\d+) -> (\d+)", (R / "evidencias/kafka_duplicados.txt").read_text(encoding="utf-8"))
+mrh = J("data/calidad/mapreduce_vs_spark_hadoop.json")
+hj = (R / "evidencias/hadoop_streaming_job.txt").read_text(encoding="utf-8")
+h_in, h_out = re.findall(r"Map input records=(\d+)", hj)[-1], re.findall(r"Reduce output records=(\d+)", hj)[-1]
 con = sqlite3.connect(R / "data/servicio/secop.db")
 meta = dict(zip(*[[c[0] for c in con.execute("select * from meta_corte").description], con.execute("select * from meta_corte").fetchone()]))
 dep = con.execute("select departamento,contratos,contratos_directa,valor_total,valor_directa from ind_directa_por_departamento").fetchall()
@@ -39,7 +44,7 @@ red_local = 100 * (1 - tam["parquet_bytes"] / raw_local)
 batch = con.execute("select fecha_firma,contratos,valor_total from ind_serie_diaria order by fecha_firma").fetchall()
 rap = {r[0]: r[1:] for r in con.execute("select ventana_inicio,contratos,valor_total from rapida_ventana_diaria")}
 rows_stream = "".join(f"<tr><td>{d}</td><td>{nf(n)}</td><td>{nf(rap.get(d,(0,0))[0])}</td><td class=ok>{'✔' if rap.get(d,(0,0))[0]==n else '✘'}</td></tr>" for d, n, v in batch[:6])
-mr_top = sorted(mrs["spark"].items(), key=lambda kv: -kv[1]["contratos"])[:5]
+mr_top = sorted(mrs["spark"].items(), key=lambda kv: -kv[1]["contratos"])[:3]
 rows_mr = "".join(f"<tr><td>{k}</td><td>{nf(v['contratos'])}</td><td>{nf(mrs['mapreduce'][k]['contratos'])}</td><td>{v['valor']/1e9:,.0f}</td><td>{mrs['mapreduce'][k]['valor']/1e9:,.0f}</td><td class=ok>✔</td></tr>" for k, v in mr_top)
 
 def slide(n, titulo, cuerpo, sub=""):
@@ -73,7 +78,7 @@ S.append(slide(3, "Ingesta a raw y mensajería con Kafka", f"""
 <div class="cols"><div><h4>Ingesta (Fase 2)</h4><ul><li>API Socrata con <b>paginación</b> ($limit/$offset, orden estable) y <b>5 reintentos</b> con espera exponencial</li>
 <li><b>Sobre JSON</b>: <code>fuente, dataset, id_registro, fecha_ingesta, payload</code> (registro original intacto)</li>
 <li>JSONL en <code>fecha_ingesta=AAAA-MM-DD/</code> + <b>manifiesto</b> por corrida</li>
-<li>Primera carga: <b>{nf(m1['registros_escritos'])}</b> registros en {m1['paginas']} páginas</li></ul>
+<li>Carga inicial: <b>{nf(inc[0])}</b> registros (25-oct → 5-nov); incremental: <b>+{nf(inc[1])}</b></li></ul>
 <pre>{{"fuente":"datos.gov.co","dataset":"jbjy-vk9h",
  "id_registro":"CO1.PCCNTR.…","fecha_ingesta":"{m1['fecha_ingesta']}",
  "payload":{{…registro original…}}}}</pre></div>
@@ -90,12 +95,12 @@ S.append(slide(4, "Data lake en HDFS y MapReduce vs Spark", f"""
 mapper  → departamento \\t 1 \\t valor
 reducer → departamento \\t n \\t Σ valor</pre>
 <div class="box big">MapReduce vs Spark: <b>{mr_ok}</b><br>{len(mrs['mapreduce'])} departamentos · {nf(sum(v['contratos'] for v in mrs['mapreduce'].values()))} contratos<br>diferencias: <b>{', '.join(mrs['difs']) or 'ninguna'}</b></div>
-<p class="small">Nota: el MR corre como tubería local sobre datos leídos de HDFS (no en YARN).</p></div></div>
+<div class="box"><b>Job real de Hadoop Streaming</b> (<code>hadoop-streaming-3.2.1.jar</code>, ejecutor local de MapReduce; sin YARN): {nf(h_in)} registros de entrada → {h_out} de salida · vs Spark: <b>{'COINCIDEN' if not mrh['difs'] else 'NO COINCIDEN'}</b></div></div></div>
 <h4 style="margin-top:14px">Resultado: contratos y valor (miles de millones COP) por departamento</h4>
 <table class="t small"><tr><th>Departamento</th><th>Spark contratos</th><th>MapReduce contratos</th><th>Spark valor</th><th>MapReduce valor</th><th></th></tr>{rows_mr}</table>""", "Fase 4"))
 S.append(slide(5, "Zona curada con PySpark → Parquet", f"""
 <table class="t"><tr><th>Problema</th><th>Decisión y por qué</th><th>Antes → después</th></tr>
-<tr><td>Duplicados por <code>id_registro</code></td><td>Una fila por id (mayor fecha_ingesta, luego ultima_actualizacion): refleja el estado actual y no cuenta el dinero dos veces</td><td>{nf(dec['duplicados']['filas_antes'])} → {nf(dec['duplicados']['filas_despues'])}<br><small>(corrida tras republicar Kafka a propósito: ×2)</small></td></tr>
+<tr><td>Duplicados por <code>id_registro</code></td><td>Una fila por id (mayor fecha_ingesta, luego ultima_actualizacion): refleja el estado actual y no cuenta el dinero dos veces</td><td>{nf(dec['duplicados']['filas_antes'])} → {nf(dec['duplicados']['filas_despues'])}<br><small>republicando Kafka a propósito: {nf(forzada.group(1))} → {nf(forzada.group(2))}</small></td></tr>
 <tr><td>Fechas y valores como texto</td><td>→ timestamp / double; lo inválido a NULL (no se inventa)</td><td>{dec['tipos']['fecha_firma_nulas']} fechas y {dec['tipos']['valor_nulos']} valores nulos</td></tr>
 <tr><td>Nulos disfrazados («No definido»)</td><td>→ NULL; departamento → «Sin dato»</td><td>{nf(dec['texto']['departamento_no_definido_antes'])} unificados</td></tr>
 <tr><td>Modalidad escrita de varias formas</td><td>Catálogo de 8 grupos + <code>es_directa</code>; si no, la directa se subestima</td><td>{dec['texto']['modalidades_distintas_antes']} → {dec['texto']['modalidades_distintas_despues']} modalidades</td></tr>
@@ -105,7 +110,7 @@ S.append(slide(5, "Zona curada con PySpark → Parquet", f"""
 S.append(slide(6, "Calidad, incremental e idempotencia (demo en vivo)", f"""
 <div class="cols"><div><h4>Validaciones automáticas</h4><table class="t small"><tr><th>Validación</th><th>Tipo</th><th></th></tr>{checks}</table>
 <p class="small">Reporte con descartados ({nf(cal['filas_descartadas'])}). <b>Si falla una crítica → exit 1 y el pipeline se detiene.</b></p>
-<div class="box"><b>Marca de agua</b> = última <code>fecha_de_firma</code> cargada. Ampliar la ventana trajo solo <b>{nf(m2.get('registros_escritos',0))}</b> nuevos; repetirla trajo <b>0</b>.</div></div>
+<div class="box"><b>Marca de agua</b> = última <code>fecha_de_firma</code> cargada. Ampliar la ventana trajo solo <b>{nf(inc[1])}</b> nuevos; repetirla trajo <b>{nf(inc[2])}</b>.</div></div>
 <div><h4>Correr el pipeline dos veces</h4><table class="t small"><tr><th>Conteo por zona</th><th>Corrida 1</th><th>Corrida 2</th><th></th></tr>{rows_idem}</table>
 <div class="box big">Resultado: <b>IDEMPOTENTE</b> — la curada se reconstruye desde el raw (overwrite) y el servicio usa replace.</div></div></div>""", "Fase 6"))
 S.append(slide(7, "Streaming: capa rápida (Lambda)", f"""

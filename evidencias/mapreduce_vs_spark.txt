@@ -1,3 +1,4 @@
+MapReduce (tubería mapper | sort | reducer sobre HDFS) vs Spark
 departamento                                   MR contratos  Spark contr.             MR valor          Spark valor
 Distrito Capital de Bogotá                             5847          5847    4,809,176,301,635    4,809,176,301,635
 Valle del Cauca                                        3322          3322      235,818,382,401      235,818,382,401

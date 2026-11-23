@@ -86,11 +86,17 @@ pd.DataFrame(filas, columns=["carpeta", "archivo", "bytes"])
 """)
 md("""
 **MapReduce vs Spark.** Mapper y reducer en Python (flujo de Hadoop Streaming: `mapper | sort | reducer`) leen el raw directamente de HDFS y calculan **número de contratos y valor por departamento**; Spark hace el mismo cálculo y se comparan.
-*Nota:* el MapReduce corre como tubería local sobre los datos leídos de HDFS, no como job en YARN.
+Primero se ejecuta como tubería `mapper | sort | reducer` leyendo HDFS (la que usa `run_pipeline`). Además se ejecuta como **job real de Hadoop Streaming** (`hadoop-streaming-3.2.1.jar` en el contenedor del NameNode, que trae Python 3; el stack no incluye YARN, así que usa el ejecutor local de MapReduce de Hadoop) con `bash run_evidencias.sh hadoop`, y su salida en HDFS (`/datalake/mapreduce_out`) se compara con Spark.
 """)
 code("""
 from pipeline import f4_mapreduce_vs_spark
 _ = f4_mapreduce_vs_spark.ejecutar()
+""")
+code("""
+# Job real de Hadoop Streaming (se lanza desde el host: bash run_evidencias.sh hadoop)
+ruta = "evidencias/hadoop_streaming_job.txt"
+print(open(ruta, encoding="utf-8").read() if os.path.exists(ruta) else "Aún no se ha ejecutado: bash run_evidencias.sh hadoop")
+print(open("evidencias/mapreduce_vs_spark_hadoop.txt", encoding="utf-8").read().splitlines()[-2:] if os.path.exists("evidencias/mapreduce_vs_spark_hadoop.txt") else "")
 """)
 
 md("""

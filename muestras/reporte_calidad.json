@@ -1,9 +1,9 @@
 {
-  "generado": "2026-11-23T03:51:28Z",
+  "generado": "2026-11-23T04:13:17Z",
   "filas_curada": 32707,
   "fecha_firma_min": "2026-10-25 01:14:46.013000",
   "fecha_firma_max": "2026-11-07 23:29:53.311000",
-  "filas_raw": 65414,
+  "filas_raw": 32707,
   "filas_descartadas": 0,
   "descartes_por_razon": {
     "sin_fecha_firma": 0,

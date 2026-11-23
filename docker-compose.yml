@@ -21,7 +21,10 @@ services:
       - kafka_data:/var/lib/kafka/data
 
   namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    build:
+      context: .
+      dockerfile: Dockerfile.namenode
+    image: secop-namenode:latest
     container_name: secop-namenode
     environment:
       CLUSTER_NAME: secop
@@ -30,6 +33,7 @@ services:
       - "127.0.0.1:9871:9870"   # interfaz web del NameNode
     volumes:
       - namenode_data:/hadoop/dfs/name
+      - ./pipeline/mapreduce:/mr:ro      # mapper.py y reducer.py para Hadoop Streaming
 
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
