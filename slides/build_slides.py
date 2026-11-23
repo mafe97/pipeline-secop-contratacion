@@ -73,7 +73,7 @@ S.append(slide(2, "Arquitectura por zonas · Lambda", f"""
 <tr><td>Ingesta</td><td>Python <code>requests</code> (paginación + reintentos)</td><td>JSONL con sobre + manifiesto</td></tr>
 <tr><td>Mensajería</td><td>Apache Kafka (KRaft, 3 particiones)</td><td>tópico <code>secop.contratos.raw</code></td></tr>
 <tr><td>Data lake / cálculo</td><td>HDFS · MapReduce (Python) · PySpark</td><td>raw en lotes · Parquet curado</td></tr>
-<tr><td>Servicio / tablero</td><td>SQLite · Plotly HTML (GitHub Pages)</td><td>indicadores listos + tablero</td></tr></table>""", "Fase 1"))
+<tr><td>Servicio / tablero</td><td>SQLite · Plotly HTML + D3 (GitHub Pages)</td><td>indicadores listos + tablero</td></tr></table>""", "Fase 1"))
 S.append(slide(3, "Ingesta a raw y mensajería con Kafka", f"""
 <div class="cols"><div><h4>Ingesta (Fase 2)</h4><ul><li>API Socrata con <b>paginación</b> ($limit/$offset, orden estable) y <b>5 reintentos</b> con espera exponencial</li>
 <li><b>Sobre JSON</b>: <code>fuente, dataset, id_registro, fecha_ingesta, payload</code> (registro original intacto)</li>
@@ -122,7 +122,7 @@ S.append(slide(7, "Streaming: capa rápida (Lambda)", f"""
 <table class="t small"><tr><th>Día (ventana)</th><th>Batch</th><th>Rápida</th><th></th></tr>{rows_stream}</table></div></div>""", "Fase 7"))
 S.append(slide(8, "Tablero y hallazgos", f"""
 <div class="cols dash"><div class="img"><img src="../evidencias/tablero_completo.png"></div>
-<div><h4>Servicio y tablero (Fase 8)</h4><ul class="small"><li>SQLite: <code>ind_directa_por_departamento</code>, <code>ind_modalidad</code>, <code>ind_top_entidades</code>, <code>ind_serie_diaria</code></li><li>Plotly HTML: mapa, barras, treemap, serie, mapa de calor y tabla · filtros</li><li>Título = pregunta; fuente y fecha de corte en el pie</li></ul>
+<div><h4>Servicio y tablero (Fase 8)</h4><ul class="small"><li>SQLite: <code>ind_directa_por_departamento</code>, <code>ind_modalidad</code>, <code>ind_top_entidades</code>, <code>ind_serie_diaria</code></li><li>Plotly HTML + D3: burbujas animadas, mapa de municipios (OpenStreetMap + DIVIPOLA), mapa por departamento, treemap, mapa de calor y tabla · filtros</li><li>Título = pregunta; fuente y fecha de corte en el pie</li></ul>
 <div class="box"><b>Respuesta a la pregunta</b><br>• <b>{pc(pct_n)}</b> de los contratos y <b>{pc(pct_v)}</b> del valor ({cop(tot_v)}) son contratación directa.<br>• 3 departamentos concentran <b>{pc(top3)}</b> del valor ({', '.join(d[0].replace('Distrito Capital de ','') for d in top[:3])}).<br>• Mayor entidad: {html.escape(ent[0].title()[:48])} ({cop(ent[1])}).</div>
 <p class="small"><b>Repositorio:</b> {REPO}<br><b>Tablero:</b> {PAGES}</p></div></div>""", "Fase 8"))
 

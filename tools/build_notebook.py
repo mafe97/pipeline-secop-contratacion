@@ -174,7 +174,7 @@ print("Capa batch vs capa rápida, por día:"); cmp
 md("""
 ## Fase 8 · Zona de servicio, tablero y repositorio
 `f8_servicio` carga en **SQLite** los indicadores ya calculados, para que el tablero no haga cálculos: `ind_directa_por_departamento`, `ind_modalidad`, `ind_top_entidades`, `ind_serie_diaria` (+ `ind_cubo_dia_dep_modalidad`, `ind_entidades` y `meta_corte` con fuente y fecha de corte).
-El tablero es **Plotly HTML** (una de las herramientas permitidas) y se publica en GitHub Pages: mapa coroplético, barras apiladas, treemap, serie diaria con eje secundario, mapa de calor y tabla con búsqueda; con filtros por fechas, departamento y modalidad.
+El tablero es **Plotly HTML** (una de las herramientas permitidas) y se publica en GitHub Pages: burbujas animadas (D3) que se mueven entre nube, grupos por departamento y dispersión, mapa de municipios sobre OpenStreetMap (coordenadas DIVIPOLA), mapa coroplético, barras apiladas, treemap, serie diaria con eje secundario, mapa de calor y tabla con búsqueda; con filtros por fechas, departamento y modalidad.
 """)
 code("""
 con = sqlite3.connect(config.SERVICIO_DB)

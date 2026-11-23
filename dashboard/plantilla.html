@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contratación pública SECOP II · ¿cuánto se adjudica de forma directa?</title>
 <script src="vendor/plotly.min.js" charset="utf-8"></script>
+<script src="vendor/d3.min.js"></script>
 <link href="vendor/tabulator_simple.min.css" rel="stylesheet">
 <script src="vendor/tabulator.min.js"></script>
 <style>
@@ -27,6 +28,13 @@ main{padding:18px 28px 36px;max-width:1500px;margin:auto}
 .card h3{margin:2px 4px 0;font-size:14px}.card p.sub{margin:0 4px 4px;font-size:12px;color:var(--mut)}
 .c6{grid-column:span 6}.c5{grid-column:span 5}.c7{grid-column:span 7}.c12{grid-column:span 12}
 @media(max-width:1000px){.c6,.c5,.c7{grid-column:span 12}}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 4px 8px}
+.bar button{font:inherit;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer;color:var(--ink)}
+.bar button.on{background:var(--brand);border-color:var(--brand);color:#fff}.bar button.play{background:var(--acc);border-color:var(--acc);color:#fff}
+.bar input{font:inherit;padding:6px 12px;border:1px solid var(--line);border-radius:999px;min-width:260px}
+.leg{display:flex;gap:14px;font-size:12px;color:var(--mut);margin-left:auto;align-items:center}.leg i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+#burb{position:relative;height:640px}#burb canvas{width:100%;height:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 40%,#fff,#f3f6fb)}
+#tip{position:absolute;pointer-events:none;background:#14213d;color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;display:none;max-width:280px;z-index:5}
 footer{padding:16px 28px 28px;color:var(--mut);font-size:12px;max-width:1500px;margin:auto}footer a{color:var(--brand)}
 .tabulator{font-size:12.5px;border:none}
 </style>
@@ -48,10 +56,17 @@ footer{padding:16px 28px 28px;color:var(--mut);font-size:12px;max-width:1500px;m
 <main>
   <section class="kpis" id="kpis"></section>
   <section class="grid">
-    <div class="card c5"><h3>% del valor adjudicado por contratación directa</h3><p class="sub">Mapa por departamento · clic en un departamento para filtrar</p><div id="mapa" style="height:480px"></div></div>
+    <div class="card c12"><h3>Mapa animado de entidades: cada burbuja es una entidad contratante</h3>
+      <p class="sub">Tamaño = valor contratado (escala comprimida) · rojo = más de la mitad del valor por contratación directa · cambia de vista para verlas moverse</p>
+      <div class="bar"><button class="on" data-v="nube">1 · Todas las entidades</button><button data-v="dep">2 · Agrupadas por departamento</button><button data-v="disp">3 · Contratación directa vs. número de contratos</button>
+        <button class="play" id="play">▶ Reproducir</button><input id="busca" placeholder="Busca una entidad, p. ej. pascual bravo" autocomplete="off"><button id="chip-pb">IU Pascual Bravo</button>
+        <span class="leg"><span><i style="background:#c0392b"></i>≥ 50 % directa</span><span><i style="background:#c3c9d6"></i>&lt; 50 %</span><span><i style="background:#0b5fa5"></i>búsqueda</span></span></div>
+      <div id="burb"><canvas id="burb-cv"></canvas><div id="tip"></div></div></div>
+    <div class="card c7"><h3>Mapa de municipios: dónde se firma la contratación</h3><p class="sub">Un punto por municipio sobre mapa de calles (OpenStreetMap) · tamaño = valor · color = % del valor por contratación directa · clic para filtrar por departamento · periodo completo de la muestra</p><div id="mpio" style="height:560px"></div></div>
+    <div class="card c5"><h3>% del valor adjudicado por contratación directa</h3><p class="sub">Mapa por departamento · clic en un departamento para filtrar</p><div id="mapa" style="height:560px"></div></div>
     <div class="card c7"><h3>Valor contratado por departamento</h3><p class="sub">Directa vs. otras modalidades (15 con más valor) · clic para filtrar</p><div id="deps" style="height:480px"></div></div>
-    <div class="card c6"><h3>Valor contratado por modalidad</h3><p class="sub">Tamaño = valor; color = modalidad · clic para filtrar</p><div id="trees" style="height:380px"></div></div>
-    <div class="card c6"><h3>Evolución diaria del valor y de la contratación directa</h3><p class="sub">Barras: valor por día de firma · línea: % del valor por contratación directa</p><div id="serie" style="height:380px"></div></div>
+    <div class="card c5"><h3>Valor contratado por modalidad</h3><p class="sub">Tamaño = valor; color = modalidad · clic para filtrar</p><div id="trees" style="height:480px"></div></div>
+    <div class="card c12"><h3>Evolución diaria del valor y de la contratación directa</h3><p class="sub">Barras: valor por día de firma · línea: % del valor por contratación directa</p><div id="serie" style="height:380px"></div></div>
     <div class="card c12"><h3>¿Dónde pesa más la contratación directa?</h3><p class="sub">% del valor por departamento (12 con más valor) y modalidad en el periodo seleccionado</p><div id="heat" style="height:470px"></div></div>
     <div class="card c12"><h3>Entidades contratantes</h3><p class="sub">Todas las entidades de la muestra, ordenadas por valor · escribe en el filtro de "Entidad" para buscar cualquiera (p. ej. "pascual bravo") · cifras del periodo completo</p><div id="tabla"></div></div>
   </section>
@@ -142,11 +157,25 @@ function render(){
     text:zz.map(r=>r.map(v=>v==null?"":v.toFixed(0)+"%")),texttemplate:"%{text}",
     hovertemplate:"%{y}<br>%{x}<br>%{z:.1f} % del valor<extra></extra>",colorbar:{thickness:12,ticksuffix:" %"}}],
     {...L,margin:{l:150,r:10,t:8,b:20},xaxis:{tickangle:-25,automargin:true},yaxis:{autorange:"reversed",automargin:true}},cfg);
+  renderMpio();
   bindClicks();
+}
+function renderMpio(){
+  const bins=[["Menos de 25 %",0,25,"#2a9d8f"],["25 a 50 %",25,50,"#8ab17d"],["50 a 75 %",50,75,"#e9a23b"],["75 % o más",75,101,"#c0392b"]];
+  const base=D.municipios.filter(m=>S.dep==="Todos"||m.departamento===S.dep), maxV=d3.max(D.municipios,m=>m.valor_total);
+  const traces=bins.map(([name,lo,hi,col])=>{const r=base.filter(m=>m.pct_valor_directa>=lo&&m.pct_valor_directa<hi);
+    return {type:"scattermap",mode:"markers",name,lat:r.map(m=>m.lat),lon:r.map(m=>m.lon),
+      marker:{size:r.map(m=>7+36*Math.sqrt(m.valor_total/maxV)),color:col,opacity:.8},
+      customdata:r.map(m=>[m.mpio,m.departamento,m.contratos,cop(m.valor_total),m.pct_valor_directa]),
+      hovertemplate:"<b>%{customdata[0]}</b> · %{customdata[1]}<br>Contratos: %{customdata[2]:,}<br>Valor: %{customdata[3]}<br>% valor directa: %{customdata[4]:.1f} %<extra></extra>"};});
+  const c=(S.dep!=="Todos"&&base.length)?{lat:d3.mean(base,m=>m.lat),lon:d3.mean(base,m=>m.lon)}:{lat:5.4,lon:-74.6};
+  Plotly.react("mpio",traces,{...L,margin:{l:0,r:0,t:0,b:0},uirevision:S.dep,map:{style:"open-street-map",center:c,zoom:(S.dep!=="Todos"&&base.length)?7:5.05},
+    legend:{orientation:"h",x:.01,y:.02,bgcolor:"rgba(255,255,255,.85)",font:{size:12}}},cfg);
 }
 let bound=false;
 function bindClicks(){ if(bound) return; bound=true;
   $("mapa").on("plotly_click",e=>{S.dep=e.points[0].customdata; opts($("f-dep"),["Todos",...deps],S.dep); render();});
+  $("mpio").on("plotly_click",e=>{S.dep=e.points[0].customdata[1]; opts($("f-dep"),["Todos",...deps],S.dep); render();});
   $("deps").on("plotly_click",e=>{S.dep=e.points[0].y; opts($("f-dep"),["Todos",...deps],S.dep); render();});
   $("trees").on("plotly_click",e=>{S.mod=e.points[0].label; opts($("f-mod"),["Todas",...mods],S.mod); render();});
 }
@@ -157,9 +186,96 @@ const TABLA = new Tabulator("#tabla",{data:D.entidades,layout:"fitColumns",heigh
     {title:"Valor total",field:"valor_total",sorter:"number",hozAlign:"right",formatter:c=>cop(c.getValue())},
     {title:"% valor directa",field:"pct_valor_directa",sorter:"number",width:170,formatter:c=>{const v=Number(c.getValue());if(!isFinite(v))return "–";return `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:#eef1f7;border-radius:4px;height:10px"><div style="width:${Math.min(100,v)}%;background:#e07a1f;height:10px;border-radius:4px"></div></div><span>${v.toFixed(0)}%</span></div>`}}]});
 TABLA.on("tableBuilt",()=>{const e=new URLSearchParams(decodeURIComponent(location.hash.slice(1))).get("ent"); if(e) TABLA.setHeaderFilterValue("entidad",e);});
+
+// ===== Burbujas animadas (estilo Flourish): nube -> agrupadas por departamento -> dispersión =====
+(function(){
+  const cv=$("burb-cv"), ctx=cv.getContext("2d"), tip=$("tip");
+  const nodes=D.entidades.filter(e=>e.valor_total>0).map(e=>({...e,pct:+e.pct_valor_directa||0,x:0,y:0}));
+  const RM={nube:1,dep:1,disp:.5}, SC={nube:1,dep:1,disp:1};
+  let W=0,H=0,dpr=window.devicePixelRatio||1, T={}, labels=[], cur="nube", anim=null, query="", timer=null, ov={dep:0,disp:0,s:1,rm:1};
+  const topDeps=(()=>{const m=d3.rollup(nodes,v=>d3.sum(v,n=>n.valor_total),n=>n.departamento);return [...m].filter(([k])=>k!=="Sin dato").sort((a,b)=>b[1]-a[1]).slice(0,9).map(d=>d[0]);})();
+  const grupo=n=>topDeps.includes(n.departamento)?n.departamento:"Otros departamentos";
+  const colorOf=n=>n.pct>=50?"#c0392b":"#c3c9d6";
+  const matches=n=>query&&n.entidad.toLowerCase().includes(query);
+  const corto=n=>n.entidad.replace(/^(DISTRITO ESPECIAL DE |DISTRITO ESPECIAL |MUNICIPIO DE |DEPARTAMENTO DE |INSTITUTO |ALCALDIA DE |ALCALDIA |FONDO )/,"");
+  function size(){const r=$("burb").getBoundingClientRect();W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+    const maxV=d3.max(nodes,n=>n.valor_total), f=n=>Math.pow(n.valor_total/maxV,.35), sum=d3.sum(nodes,n=>f(n)*f(n));
+    const k=Math.sqrt(.30*W*H/(Math.PI*sum)); nodes.forEach(n=>{n.r=Math.max(1.5,k*f(n));});}
+  let semilla=1;const rnd=()=>(semilla=(semilla*16807)%2147483647)/2147483647; // aleatorio con semilla: mismo acomodo en cada carga
+  function simular(fx,fy,sx,sy,ticks,pad,rm){semilla=42;const sn=nodes.map(n=>({r:n.r*rm,x:fx(n)+(rnd()-.5)*40,y:fy(n)+(rnd()-.5)*40}));
+    const sim=d3.forceSimulation(sn).force("x",d3.forceX((d,i)=>fx(nodes[i])).strength(sx)).force("y",d3.forceY((d,i)=>fy(nodes[i])).strength(sy))
+      .force("c",d3.forceCollide(d=>d.r+pad).iterations(2)).stop();
+    for(let i=0;i<ticks;i++)sim.tick(); return sn.map(d=>({x:d.x,y:d.y}));}
+  function calcular(v){
+    if(v==="nube"){T.nube=simular(()=>W/2,()=>H/2,.02,.085,340,.7,1);}
+    if(v==="dep"){const gs=[...topDeps,"Otros departamentos"],R={},c={};
+      gs.forEach(g=>{R[g]=Math.sqrt(d3.sum(nodes.filter(n=>grupo(n)===g),n=>n.r*n.r)/.55)+10;});
+      const ord=[...gs].sort((a,b)=>R[b]-R[a]);let rows=[],row=[],w=0;
+      ord.forEach(g=>{const d=2*R[g]+16;if(w+d>W-40&&row.length){rows.push(row);row=[];w=0;}row.push(g);w+=d;});rows.push(row);
+      const rh=rows.map(r=>2*d3.max(r,g=>R[g])+34),rw=rows.map(r=>d3.sum(r,g=>2*R[g]+16)),totH=d3.sum(rh);
+      SC.dep=Math.min(1,(H-30)/totH,(W-30)/d3.max(rw));let y=(H-totH)/2;
+      rows.forEach((r,i)=>{let x=(W-rw[i])/2;r.forEach(g=>{c[g]={x:x+R[g]+8,y:y+rh[i]/2+10};x+=2*R[g]+16;});y+=rh[i];});
+      T.dep=simular(n=>c[grupo(n)].x,n=>c[grupo(n)].y,.12,.14,340,.7,1);
+      labels=gs.map(g=>{const idx=nodes.map((n,i)=>grupo(n)===g?i:-1).filter(i=>i>=0);
+        return {t:g.replace("Distrito Capital de ","").replace("Archipiélago de ",""),x:c[g].x,y:Math.min(...idx.map(i=>T.dep[i].y-nodes[i].r))-9};});}
+    if(v==="disp"){const m=95,xs=d3.scaleLinear().domain([0,100]).range([m,W-m]),ys=d3.scaleLog().domain([1,d3.max(nodes,n=>n.contratos)*1.25]).range([H-m+10,m-25]);
+      T.disp=simular(n=>xs(n.pct),n=>ys(Math.max(1,n.contratos)),.75,.75,170,.25,RM.disp);T.disp.xs=xs;T.disp.ys=ys;}
+  }
+  const ensure=v=>{if(!T[v])calcular(v);};
+  function place(arr){nodes.forEach((n,i)=>{n.x=arr[i].x;n.y=arr[i].y;});}
+  const sx=x=>W/2+(x-W/2)*ov.s, sy=y=>H/2+(y-H/2)*ov.s;
+  function ajustar(t,maxw){let x=t;while(x.length>2&&ctx.measureText(x).width>maxw)x=x.slice(0,-2);return x.length<t.length?x.trimEnd()+"…":x;}
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    if(ov.disp>0.01){ctx.globalAlpha=ov.disp;ctx.strokeStyle="#e3e8f2";ctx.fillStyle="#5b6785";ctx.font="11px sans-serif";ctx.textAlign="center";
+      [0,25,50,75,100].forEach(v=>{const x=T.disp.xs(v);ctx.beginPath();ctx.moveTo(x,45);ctx.lineTo(x,H-60);ctx.stroke();ctx.fillText(v+" %",x,H-44);});
+      ctx.textAlign="right";[1,10,100,1000].forEach(v=>{const y=T.disp.ys(v);if(y<40||y>H-58)return;ctx.beginPath();ctx.moveTo(78,y);ctx.lineTo(W-70,y);ctx.stroke();ctx.fillText(v,72,y+4);});
+      ctx.textAlign="center";ctx.font="12px sans-serif";ctx.fillText("% del valor por contratación directa →",W/2,H-20);
+      ctx.save();ctx.translate(18,H/2);ctx.rotate(-Math.PI/2);ctx.fillText("número de contratos (escala log) →",0,0);ctx.restore();ctx.globalAlpha=1;}
+    const orden=[...nodes].sort((a,b)=>b.r-a.r), hay=!!query;
+    ctx.save();ctx.translate(W/2,H/2);ctx.scale(ov.s,ov.s);ctx.translate(-W/2,-H/2);
+    for(const n of orden){const m=matches(n);ctx.globalAlpha=hay&&!m?.18:.92;ctx.beginPath();ctx.arc(n.x,n.y,Math.max(1,n.r*ov.rm),0,6.2832);ctx.fillStyle=m?"#0b5fa5":colorOf(n);ctx.fill();
+      ctx.lineWidth=.6;ctx.strokeStyle="#fff";ctx.stroke();}
+    ctx.globalAlpha=1;ctx.textAlign="center";
+    if(!hay)for(const n of orden){const r=n.r*ov.rm*ov.s;if(r<22)break;ctx.font=Math.min(13,r/3+3)+"px sans-serif";ctx.fillStyle=n.pct>=50?"#fff":"#14213d";
+      ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillText(ajustar(corto(n),r*1.7),sx(n.x),sy(n.y)+4);ctx.restore();}
+    if(ov.dep>0.01){ctx.globalAlpha=ov.dep;ctx.fillStyle="#14213d";ctx.font="bold "+(13/ov.s)+"px sans-serif";labels.forEach(l=>ctx.fillText(l.t,l.x,l.y));ctx.globalAlpha=1;}
+    ctx.restore();
+    if(hay){const ms=orden.filter(matches).slice(0,6);for(const n of ms){const X=sx(n.x),Y=sy(n.y),r=Math.max(1,n.r*ov.rm*ov.s);ctx.lineWidth=3;ctx.strokeStyle="#14213d";ctx.beginPath();ctx.arc(X,Y,r+3,0,6.2832);ctx.stroke();
+      const t=n.entidad.slice(0,42)+" · "+n.contratos+" contr. · "+cop(n.valor_total)+" · "+pf(n.pct);ctx.font="bold 12px sans-serif";const w=ctx.measureText(t).width+16,x=Math.min(Math.max(X,w/2+4),W-w/2-4),y=Math.max(Y-r-18,18);
+      ctx.fillStyle="#14213d";ctx.fillRect(x-w/2,y-13,w,22);ctx.fillStyle="#fff";ctx.fillText(t,x,y+3);}}
+  }
+  function overlays(from,to,p){const a=v=>(to===v?p:(from===v?1-p:0));ov.dep=a("dep");ov.disp=a("disp");ov.s=SC[from]+(SC[to]-SC[from])*p;ov.rm=RM[from]+(RM[to]-RM[from])*p;}
+  const marcar=v=>document.querySelectorAll(".bar button[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  function ir(v,dur){ensure(v);const from=nodes.map(n=>({x:n.x,y:n.y})),to=T[v],fv=cur;cur=v;marcar(v);
+    if(anim)anim.stop();const t0=performance.now();
+    anim=d3.timer(()=>{const p=d3.easeCubicInOut(Math.min(1,(performance.now()-t0)/dur));
+      nodes.forEach((n,i)=>{n.x=from[i].x+(to[i].x-from[i].x)*p;n.y=from[i].y+(to[i].y-from[i].y)*p;});overlays(fv,v,p);draw();if(p>=1)anim.stop();});}
+  document.querySelectorAll(".bar button[data-v]").forEach(b=>b.onclick=()=>{detener();ir(b.dataset.v,1500);});
+  const orden3=["nube","dep","disp"];
+  function detener(){if(timer){clearInterval(timer);timer=null;$("play").textContent="▶ Reproducir";}}
+  $("play").onclick=()=>{if(timer){detener();return;}$("play").textContent="⏸ Pausar";ir(orden3[(orden3.indexOf(cur)+1)%3],1500);timer=setInterval(()=>ir(orden3[(orden3.indexOf(cur)+1)%3],1500),3800);};
+  $("busca").oninput=e=>{query=e.target.value.trim().toLowerCase();draw();};
+  $("chip-pb").onclick=()=>{$("busca").value="pascual bravo";query="pascual bravo";draw();};
+  cv.onmousemove=e=>{const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let best=null,br=1e9;
+    for(const n of nodes){const rr=Math.max(1,n.r*ov.rm*ov.s),d=Math.hypot(sx(n.x)-x,sy(n.y)-y);if(d<=rr&&rr<br){best=n;br=rr;}}
+    if(best){tip.style.display="block";tip.style.left=Math.min(x+14,W-290)+"px";tip.style.top=(y+14)+"px";
+      tip.innerHTML=`<b>${best.entidad}</b><br>${best.departamento} · ${best.orden}<br>${nf.format(best.contratos)} contratos · ${cop(best.valor_total)}<br>${pf(best.pct)} del valor por contratación directa`;cv.style.cursor="pointer";}
+    else{tip.style.display="none";cv.style.cursor="default";}};
+  cv.onmouseleave=()=>tip.style.display="none";
+  function init(){size();T={};calcular("nube");place(T.nube);overlays("nube","nube",1);
+    const h=new URLSearchParams(decodeURIComponent(location.hash.slice(1)));
+    if(h.get("q")){query=h.get("q").toLowerCase();$("busca").value=h.get("q");}
+    if(h.get("anim")){const [a,b,p]=h.get("anim").split(",");ensure(a);ensure(b);const f=T[a],t=T[b],q=d3.easeCubicInOut(+p);
+      nodes.forEach((n,i)=>{n.x=f[i].x+(t[i].x-f[i].x)*q;n.y=f[i].y+(t[i].y-f[i].y)*q;});cur=b;overlays(a,b,q);marcar(b);}
+    else if(h.get("vista")&&h.get("vista")!=="nube"){const v=h.get("vista");ensure(v);place(T[v]);overlays("nube",v,1);cur=v;marcar(v);}
+    draw();}
+  let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{const v=cur;size();T={};calcular("nube");if(v!=="nube")calcular(v);place(T[v]);overlays(v,v,1);draw();},250);});
+  init();
+})();
 const M=D.meta;
 $("pie").innerHTML=`<b>Fuente:</b> <a href="${M.url}">${M.fuente}</a> (API Socrata, datos abiertos) · <b>Fecha de corte</b> (última firma incluida): ${M.fecha_corte} · ${nf.format(+M.filas_curada)} contratos curados · generado ${M.generado}.
- Pipeline: API → raw JSONL → Kafka → HDFS → PySpark (Parquet) → SQLite → este tablero.${D.repo?` · <a href="${D.repo}">Código</a>`:""}<br>Mapa: límites departamentales DANE (MGN 2018) vía caticoa3/colombia_mapa. Cifras en pesos colombianos; la modalidad "Contratación directa" incluye su variante "con ofertas".`;
+ Pipeline: API → raw JSONL → Kafka → HDFS → PySpark (Parquet) → SQLite → este tablero.${D.repo?` · <a href="${D.repo}">Código</a>`:""}<br>Mapas: límites departamentales DANE (MGN 2018) vía caticoa3/colombia_mapa; coordenadas de municipios DIVIPOLA (datos.gov.co, <code>gdxc-w37w</code>); mapa base © colaboradores de OpenStreetMap. Cifras en pesos colombianos; la modalidad "Contratación directa" incluye su variante "con ofertas".`;
 render();
 </script>
 </body>

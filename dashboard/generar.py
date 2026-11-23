@@ -27,6 +27,33 @@ def norm(t: str) -> str:
     return " ".join(t.split())
 
 
+ALIAS_MPIO = {"BOGOTA": "BOGOTA D C", "CALI": "SANTIAGO DE CALI", "CARTAGENA": "CARTAGENA DE INDIAS", "CUCUTA": "SAN JOSE DE CUCUTA",
+              "SANTAFE DE ANTIOQUIA": "SANTA FE DE ANTIOQUIA", "MOMPOS": "SANTA CRUZ DE MOMPOX", "TUMACO": "SAN ANDRES DE TUMACO",
+              "LEGUIZAMO": "PUERTO LEGUIZAMO", "PIENDAMO": "PIENDAMO TUNIA", "MARIQUITA": "SAN SEBASTIAN DE MARIQUITA",
+              "BARRANCABERMEJA": "BARRANCABERMEJA", "GUICAN": "GUICAN DE LA SIERRA"}
+
+
+def norm_mpio(t: str) -> str:
+    t = unicodedata.normalize("NFD", str(t)).encode("ascii", "ignore").decode().upper()
+    return " ".join("".join(c if c.isalnum() else " " for c in t).split())
+
+
+def municipios(df: pd.DataFrame) -> list[dict]:
+    """Une los municipios del servicio con sus coordenadas DIVIPOLA (datos.gov.co, gdxc-w37w)."""
+    div = json.loads((BASE / "assets" / "divipola_municipios.json").read_text(encoding="utf-8"))
+    idx = {(norm_mpio(m["dpto"]), norm_mpio(m["nom_mpio"])): m for m in div}
+    dep_alias = {"DISTRITO CAPITAL DE BOGOTA": "BOGOTA D C", "SAN ANDRES PROVIDENCIA Y SANTA CATALINA": "ARCHIPIELAGO DE SAN ANDRES PROVIDENCIA Y SANTA CATALINA"}
+    out, sin = [], 0.0
+    for r in df.to_dict("records"):
+        d = norm_mpio(r["departamento"]); d = dep_alias.get(d, d)
+        c = norm_mpio(r["ciudad"]); m = idx.get((d, ALIAS_MPIO.get(c, c)))
+        if not m:
+            sin += r["valor_total"]; continue
+        out.append({**r, "lat": float(m["latitud"].replace(",", ".")), "lon": float(m["longitud"].replace(",", ".")), "mpio": m["nom_mpio"].title()})
+    print(f"municipios ubicados: {len(out)}/{len(df)} · valor sin ubicar: {100 * sin / df['valor_total'].sum():.2f} %")
+    return out
+
+
 def clave_geo(dep: str) -> str | None:
     k = norm(dep)
     return ESPECIALES.get(k.lower(), k)
@@ -36,7 +63,7 @@ def main() -> None:
     con = sqlite3.connect(DB)
     q = lambda t: pd.read_sql(f"SELECT * FROM {t}", con)
     meta = q("meta_corte").iloc[0].to_dict()
-    cubo, ent = q("ind_cubo_dia_dep_modalidad"), q("ind_entidades")
+    cubo, ent, mun = q("ind_cubo_dia_dep_modalidad"), q("ind_entidades"), q("ind_municipios")
     try:
         rap = q("rapida_ventana_diaria")
     except Exception:
@@ -53,6 +80,7 @@ def main() -> None:
         "cubo": cubo.round(0).values.tolist(),          # [fecha, departamento, modalidad, contratos, valor]
         "geoClave": {d: clave_geo(d) for d in deps},
         "entidades": ent.to_dict("records"),
+        "municipios": municipios(mun),
         "rapida": rap.rename(columns={"ventana_inicio": "fecha"}).to_dict("records"),
     }
     html = (BASE / "plantilla.html").read_text(encoding="utf-8")

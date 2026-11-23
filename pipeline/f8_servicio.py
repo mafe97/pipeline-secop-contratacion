@@ -38,10 +38,14 @@ def ejecutar() -> dict:
         F.count("*").alias("contratos"), F.sum(v).alias("valor_total"), F.sum(F.when(d, v).otherwise(0.0)).alias("valor_directa"))
         .withColumn("pct_valor_directa", F.round(100 * F.col("valor_directa") / F.col("valor_total"), 2))
         .orderBy(F.desc("valor_total")))  # TODAS las entidades: el tablero las filtra/busca
+    ind_mun = (df.filter(F.col("ciudad").isNotNull()).groupBy("departamento", "ciudad").agg(
+        F.count("*").alias("contratos"), F.sum(v).alias("valor_total"), F.sum(F.when(d, v).otherwise(0.0)).alias("valor_directa"))
+        .withColumn("pct_valor_directa", F.round(100 * F.col("valor_directa") / F.col("valor_total"), 2))
+        .orderBy(F.desc("valor_total")))  # se une con las coordenadas DIVIPOLA al generar el tablero
     n, corte = df.count(), df.agg(F.max("fecha_de_firma")).first()[0]
     tablas = {"ind_directa_por_departamento": ind_dep, "ind_modalidad": ind_mod,
               "ind_top_entidades": ind_ent, "ind_serie_diaria": ind_dia,
-              "ind_cubo_dia_dep_modalidad": ind_cubo, "ind_entidades": ind_ent_todas}
+              "ind_cubo_dia_dep_modalidad": ind_cubo, "ind_entidades": ind_ent_todas, "ind_municipios": ind_mun}
 
     config.SERVICIO_DB.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(config.SERVICIO_DB)
